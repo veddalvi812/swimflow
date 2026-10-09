@@ -1,8 +1,9 @@
 "use client";
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { EditableLabel } from "./EditableLabel";
 
-export function StartEndNode({ data, selected }: NodeProps) {
+export function StartEndNode({ id, data, selected }: NodeProps) {
   const nodeType = (data as { nodeType: string }).nodeType;
   const isStart = nodeType === "start";
 
@@ -19,7 +20,7 @@ export function StartEndNode({ data, selected }: NodeProps) {
       {!isStart && (
         <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-none !bg-[var(--muted)]" />
       )}
-      <span>{(data as { label: string }).label}</span>
+      <EditableLabel nodeId={id} label={(data as { label: string }).label} />
       {isStart && (
         <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-none !bg-[var(--muted)]" />
       )}

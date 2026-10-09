@@ -25,6 +25,7 @@ import { SubprocessNode } from "./nodes/SubprocessNode";
 import { LaneNode } from "./nodes/LaneNode";
 import { Toolbar } from "./Toolbar";
 import { PromptBar } from "./PromptBar";
+import { PropertiesPanel } from "./PropertiesPanel";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const nodeTypes = {
@@ -93,6 +94,9 @@ function EditorCanvas() {
     [onEdgesChange]
   );
 
+  const selectEdge = useDiagramStore((s) => s.selectEdge);
+  const setEditingNode = useDiagramStore((s) => s.setEditingNode);
+
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => {
       if (!node.id.startsWith("lane-")) {
@@ -102,9 +106,26 @@ function EditorCanvas() {
     [selectNode]
   );
 
+  const handleNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: { id: string }) => {
+      if (!node.id.startsWith("lane-")) {
+        setEditingNode(node.id);
+      }
+    },
+    [setEditingNode]
+  );
+
+  const handleEdgeClick = useCallback(
+    (_: React.MouseEvent, edge: { id: string }) => {
+      selectEdge(edge.id);
+    },
+    [selectEdge]
+  );
+
   const handlePaneClick = useCallback(() => {
     selectNode(null);
-  }, [selectNode]);
+    setEditingNode(null);
+  }, [selectNode, setEditingNode]);
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "var(--canvas-bg)" }}>
@@ -114,6 +135,8 @@ function EditorCanvas() {
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onNodeClick={handleNodeClick}
+        onNodeDoubleClick={handleNodeDoubleClick}
+        onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         minZoom={0.1}
@@ -136,6 +159,10 @@ function EditorCanvas() {
 
         <Panel position="top-center" className="pointer-events-none">
           <Toolbar />
+        </Panel>
+
+        <Panel position="top-right" className="pointer-events-none mt-14">
+          <PropertiesPanel />
         </Panel>
 
         <Panel position="bottom-center" className="pointer-events-none mb-4 flex w-full justify-center px-4">

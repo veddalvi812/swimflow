@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import type { Node, Edge } from "@xyflow/react";
-import type { SwimlaneDiagram } from "@/types/diagram";
+import type { SwimlaneDiagram, DiagramNode, DiagramEdge, Lane } from "@/types/diagram";
 import { layoutDiagram, type LaneBounds } from "@/lib/layout";
 import { SAMPLE_DIAGRAM } from "@/lib/constants";
 
@@ -12,12 +12,23 @@ interface DiagramStore {
   edges: Edge[];
   lanes: LaneBounds[];
   selectedNodeId: string | null;
+  selectedEdgeId: string | null;
+  editingNodeId: string | null;
 
   setDiagram: (diagram: SwimlaneDiagram) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   selectNode: (id: string | null) => void;
+  selectEdge: (id: string | null) => void;
+  setEditingNode: (id: string | null) => void;
   relayout: () => void;
+
+  updateNode: (id: string, patch: Partial<DiagramNode>) => void;
+  updateEdge: (id: string, patch: Partial<DiagramEdge>) => void;
+  updateLane: (id: string, patch: Partial<Lane>) => void;
+  deleteNode: (id: string) => void;
+  deleteEdge: (id: string) => void;
+  updateTitle: (title: string) => void;
 }
 
 function applyLayout(diagram: SwimlaneDiagram) {
@@ -32,19 +43,79 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
   edges: initial.edges,
   lanes: initial.lanes,
   selectedNodeId: null,
+  selectedEdgeId: null,
+  editingNodeId: null,
 
   setDiagram: (diagram) => {
     const { nodes, edges, lanes } = applyLayout(diagram);
-    set({ diagram, nodes, edges, lanes });
+    set({ diagram, nodes, edges, lanes, selectedNodeId: null, selectedEdgeId: null, editingNodeId: null });
   },
 
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
-  selectNode: (id) => set({ selectedNodeId: id }),
+  selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
+  selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null, editingNodeId: null }),
+  setEditingNode: (id) => set({ editingNodeId: id }),
 
   relayout: () => {
     const { diagram } = get();
     const { nodes, edges, lanes } = applyLayout(diagram);
     set({ nodes, edges, lanes });
+  },
+
+  updateNode: (id, patch) => {
+    const { diagram } = get();
+    const updated = {
+      ...diagram,
+      nodes: diagram.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+    };
+    const { nodes, edges, lanes } = applyLayout(updated);
+    set({ diagram: updated, nodes, edges, lanes });
+  },
+
+  updateEdge: (id, patch) => {
+    const { diagram } = get();
+    const updated = {
+      ...diagram,
+      edges: diagram.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    };
+    const { nodes, edges, lanes } = applyLayout(updated);
+    set({ diagram: updated, nodes, edges, lanes });
+  },
+
+  updateLane: (id, patch) => {
+    const { diagram } = get();
+    const updated = {
+      ...diagram,
+      lanes: diagram.lanes.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+    };
+    const { nodes, edges, lanes } = applyLayout(updated);
+    set({ diagram: updated, nodes, edges, lanes });
+  },
+
+  deleteNode: (id) => {
+    const { diagram } = get();
+    const updated = {
+      ...diagram,
+      nodes: diagram.nodes.filter((n) => n.id !== id),
+      edges: diagram.edges.filter((e) => e.from !== id && e.to !== id),
+    };
+    const { nodes, edges, lanes } = applyLayout(updated);
+    set({ diagram: updated, nodes, edges, lanes, selectedNodeId: null });
+  },
+
+  deleteEdge: (id) => {
+    const { diagram } = get();
+    const updated = {
+      ...diagram,
+      edges: diagram.edges.filter((e) => e.id !== id),
+    };
+    const { nodes, edges, lanes } = applyLayout(updated);
+    set({ diagram: updated, nodes, edges, lanes, selectedEdgeId: null });
+  },
+
+  updateTitle: (title) => {
+    const { diagram } = get();
+    set({ diagram: { ...diagram, title } });
   },
 }));
