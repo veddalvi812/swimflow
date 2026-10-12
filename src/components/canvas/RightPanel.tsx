@@ -6,6 +6,7 @@ import { useDiagramStore } from "@/store/diagram-store";
 import { useFreeStore, snapshotOf, STICKY_COLORS, uid, type KanbanCol } from "@/store/free-store";
 import { useReactFlow } from "@xyflow/react";
 import { FLOW_PROMPT, parseFlow } from "@/lib/flowchart";
+import { applyBoardJSON } from "@/lib/board-json";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { Button } from "@/components/ui/button";
 
@@ -240,11 +241,7 @@ function JsonPanel() {
 
   const apply = () => {
     try {
-      const raw = (draft ?? "").trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-      const { free, ...d } = JSON.parse(raw);
-      if (!d.lanes || !d.nodes || !d.edges) throw new Error("Needs lanes, nodes and edges");
-      setDiagram(d);
-      useFreeStore.getState().replace(free);
+      applyBoardJSON(draft ?? "");
       setDraft(null);
       setErr("");
     } catch (e) {
