@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { loadBoard } from "@/lib/cloud";
 import { useDiagramStore } from "@/store/diagram-store";
+import { useFreeStore } from "@/store/free-store";
 
 const Editor = dynamic(() => import("@/components/canvas/Editor"), { ssr: false });
 
@@ -18,7 +19,9 @@ export default function ViewPage() {
     if (!id) return;
     loadBoard(id).then((b) => {
       if (b) {
-        setDiagram(b.content);
+        const { free, ...d } = b.content;
+        setDiagram(d);
+        useFreeStore.getState().load(free);
         setStatus("found");
       } else {
         setStatus("error");

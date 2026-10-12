@@ -284,7 +284,7 @@ export function PropertiesPanel() {
   return (
     <div
       className="pointer-events-auto flex flex-col gap-3 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3 shadow-md transition-all"
-      style={{ width: 260, maxHeight: "calc(100vh - 120px)" }}
+      style={{ maxHeight: "calc(100vh - 170px)" }}
     >
       {selectedNodeId && <NodeProperties />}
       {selectedEdgeId && <EdgeProperties />}

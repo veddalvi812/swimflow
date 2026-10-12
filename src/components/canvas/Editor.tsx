@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ReactFlow,
@@ -12,6 +12,9 @@ import {
   useEdgesState,
   useReactFlow,
   useNodesInitialized,
+  ConnectionMode,
+  type NodeChange,
+  type EdgeChange,
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
@@ -28,7 +31,10 @@ import { SubprocessNode } from "./nodes/SubprocessNode";
 import { LaneNode } from "./nodes/LaneNode";
 import { Toolbar } from "./Toolbar";
 import { PromptBar } from "./PromptBar";
-import { PropertiesPanel } from "./PropertiesPanel";
+import { RightPanel } from "./RightPanel";
+import { ToolRail } from "./ToolRail";
+import { StickyNode, TextNode, ShapeNode, FrameNode } from "./nodes/FreeNodes";
+import { useFreeStore, isFreeId } from "@/store/free-store";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const nodeTypes = {
@@ -40,13 +46,20 @@ const nodeTypes = {
   document: ProcessNode,
   datastore: ProcessNode,
   lane: LaneNode,
+  sticky: StickyNode,
+  text: TextNode,
+  shape: ShapeNode,
+  frame: FrameNode,
 };
 
 function EditorCanvas({ backHref }: { backHref: string }) {
   const storeNodes = useDiagramStore((s) => s.nodes);
   const storeEdges = useDiagramStore((s) => s.edges);
   const selectNode = useDiagramStore((s) => s.selectNode);
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
+  const freeNodes = useFreeStore((s) => s.nodes);
+  const freeEdges = useFreeStore((s) => s.edges);
+  const tool = useFreeStore((s) => s.tool);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
@@ -83,35 +96,58 @@ function EditorCanvas({ backHref }: { backHref: string }) {
     }
   }, [storeNodes]);
 
+  // Swimlane objects stay in local state; free-form objects (ids "f-…"/"fe-…") live in the free store.
+  const allNodes = useMemo(() => [...nodes, ...freeNodes], [nodes, freeNodes]);
+  const allEdges = useMemo(() => [...edges, ...freeEdges], [edges, freeEdges]);
+
   const handleNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      onNodesChange(changes);
+      const free: NodeChange[] = [];
+      const rest: NodeChange[] = [];
+      for (const c of changes) (isFreeId("id" in c ? c.id : c.item.id) ? free : rest).push(c);
+      if (free.length) useFreeStore.getState().applyNodeChanges(free);
+      if (rest.length) onNodesChange(rest);
     },
     [onNodesChange]
   );
 
   const handleEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
-      onEdgesChange(changes);
+      const free: EdgeChange[] = [];
+      const rest: EdgeChange[] = [];
+      for (const c of changes) (("id" in c ? c.id : c.item.id).startsWith("fe-") ? free : rest).push(c);
+      if (free.length) useFreeStore.getState().applyEdgeChanges(free);
+      if (rest.length) onEdgesChange(rest);
     },
     [onEdgesChange]
+  );
+
+  // Places the armed tool's object at the click; returns true if it did.
+  const placeTool = useCallback(
+    (e: React.MouseEvent) => {
+      const { tool: armed, place } = useFreeStore.getState();
+      if (!armed) return false;
+      place(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+      return true;
+    },
+    [screenToFlowPosition]
   );
 
   const selectEdge = useDiagramStore((s) => s.selectEdge);
   const setEditingNode = useDiagramStore((s) => s.setEditingNode);
 
   const handleNodeClick = useCallback(
-    (_: React.MouseEvent, node: { id: string }) => {
-      if (!node.id.startsWith("lane-")) {
-        selectNode(node.id);
-      }
+    (e: React.MouseEvent, node: { id: string }) => {
+      if (placeTool(e)) return;
+      if (isFreeId(node.id)) selectNode(null);
+      else if (!node.id.startsWith("lane-")) selectNode(node.id);
     },
-    [selectNode]
+    [selectNode, placeTool]
   );
 
   const handleNodeDoubleClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => {
-      if (!node.id.startsWith("lane-")) {
+      if (!node.id.startsWith("lane-") && !isFreeId(node.id)) {
         setEditingNode(node.id);
       }
     },
@@ -125,10 +161,14 @@ function EditorCanvas({ backHref }: { backHref: string }) {
     [selectEdge]
   );
 
-  const handlePaneClick = useCallback(() => {
-    selectNode(null);
-    setEditingNode(null);
-  }, [selectNode, setEditingNode]);
+  const handlePaneClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (placeTool(e)) return;
+      selectNode(null);
+      setEditingNode(null);
+    },
+    [selectNode, setEditingNode, placeTool]
+  );
 
   const router = useRouter();
 
@@ -140,7 +180,9 @@ function EditorCanvas({ backHref }: { backHref: string }) {
 
   const handleConnect: OnConnect = useCallback(
     (connection) => {
-      if (connection.source && connection.target) {
+      if (!connection.source || !connection.target) return;
+      if (isFreeId(connection.source) && isFreeId(connection.target)) useFreeStore.getState().connect(connection);
+      else if (!isFreeId(connection.source) && !isFreeId(connection.target)) {
         addEdgeAction(connection.source, connection.target);
       }
     },
@@ -152,6 +194,13 @@ function EditorCanvas({ backHref }: { backHref: string }) {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
+      if (e.key === "Escape") useFreeStore.getState().setTool(null);
+      if (e.ctrlKey || e.metaKey) {
+        const free = useFreeStore.getState();
+        if (e.key === "c") free.copy();
+        if (e.key === "v") free.paste();
+        if (e.key === "d") { e.preventDefault(); free.copy(); free.paste(); }
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -172,10 +221,11 @@ function EditorCanvas({ backHref }: { backHref: string }) {
   }, [undo, redo, deleteNode, deleteEdge]);
 
   return (
-    <div style={{ width: "100vw", height: "100vh", background: "var(--canvas-bg)" }}>
+    <div className={tool ? "tool-armed" : ""} style={{ width: "100vw", height: "100vh", background: "var(--background)" }}>
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={allNodes}
+        edges={allEdges}
+        connectionMode={ConnectionMode.Loose}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onNodeClick={handleNodeClick}
@@ -189,7 +239,7 @@ function EditorCanvas({ backHref }: { backHref: string }) {
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{ type: "smoothstep" }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--canvas-grid)" />
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1.8} color="#d4d4d8" />
 
         <MiniMap
           position="bottom-right"
@@ -217,7 +267,11 @@ function EditorCanvas({ backHref }: { backHref: string }) {
         </Panel>
 
         <Panel position="top-right" className="pointer-events-none mt-14">
-          <PropertiesPanel />
+          <RightPanel />
+        </Panel>
+
+        <Panel position="center-left" className="pointer-events-none">
+          <ToolRail />
         </Panel>
 
         <Panel position="bottom-center" className="pointer-events-none mb-4 flex w-full justify-center px-4">

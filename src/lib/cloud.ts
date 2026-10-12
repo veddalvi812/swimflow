@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { SwimlaneDiagram } from "@/types/diagram";
+import type { SwimlaneDiagram, BoardContent } from "@/types/diagram";
 
 export interface Project {
   id: string;
@@ -16,7 +16,7 @@ export interface BoardMeta {
 }
 
 export interface Board extends BoardMeta {
-  content: SwimlaneDiagram;
+  content: BoardContent;
 }
 
 const META = "id, project_id, title, starred, is_public, updated_at";
@@ -61,7 +61,7 @@ export async function loadBoard(id: string): Promise<Board | null> {
   return data as Board | null;
 }
 
-export async function saveBoard(id: string, content: SwimlaneDiagram): Promise<boolean> {
+export async function saveBoard(id: string, content: BoardContent): Promise<boolean> {
   if (!supabase) return false;
   const { error } = await supabase
     .from("boards")

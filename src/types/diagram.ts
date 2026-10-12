@@ -20,6 +20,11 @@ export interface SwimlaneDiagram {
   edges: DiagramEdge[];
 }
 
+// What a board stores: the swimlane diagram plus its free-form canvas objects.
+export type BoardContent = SwimlaneDiagram & {
+  free?: { nodes: import("@xyflow/react").Node[]; edges: import("@xyflow/react").Edge[] };
+};
+
 export interface Lane {
   id: string;
   label: string;

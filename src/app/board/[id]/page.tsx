@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import { loadBoard, saveBoard } from "@/lib/cloud";
 import { useDiagramStore } from "@/store/diagram-store";
+import { useFreeStore, snapshotOf } from "@/store/free-store";
 
 const Editor = dynamic(() => import("@/components/canvas/Editor"), { ssr: false });
 
@@ -17,25 +18,38 @@ export default function BoardPage() {
   const [save, setSave] = useState<"saved" | "saving" | "error">("saved");
   const setDiagram = useDiagramStore((s) => s.setDiagram);
   const diagram = useDiagramStore((s) => s.diagram);
-  const loaded = useRef<unknown>(null);
+  const freeNodes = useFreeStore((s) => s.nodes);
+  const freeEdges = useFreeStore((s) => s.edges);
+  const lastKey = useRef("");
 
   useEffect(() => {
     if (!id || !user) return;
     loadBoard(id).then((b) => {
       if (!b) return setStatus("error");
-      setDiagram(b.content);
-      loaded.current = useDiagramStore.getState().diagram;
+      const { free, ...d } = b.content;
+      setDiagram(d);
+      useFreeStore.getState().load(free);
+      const f = useFreeStore.getState();
+      lastKey.current = JSON.stringify({ ...useDiagramStore.getState().diagram, free: snapshotOf(f.nodes, f.edges) });
       setStatus("found");
     });
+    return () => useFreeStore.getState().load();
   }, [id, user, setDiagram]);
 
-  // Debounced autosave; skips the diagram we just loaded.
+  // Debounced autosave; the key comparison skips selection-only changes and the state we just loaded.
   useEffect(() => {
-    if (status !== "found" || diagram === loaded.current) return;
+    if (status !== "found") return;
+    const content = { ...diagram, free: snapshotOf(freeNodes, freeEdges) };
+    const key = JSON.stringify(content);
+    if (key === lastKey.current) return;
     setSave("saving");
-    const t = setTimeout(async () => setSave((await saveBoard(id, diagram)) ? "saved" : "error"), 1000);
+    const t = setTimeout(async () => {
+      const ok = await saveBoard(id, content);
+      if (ok) lastKey.current = key;
+      setSave(ok ? "saved" : "error");
+    }, 1000);
     return () => clearTimeout(t);
-  }, [diagram, status, id]);
+  }, [diagram, freeNodes, freeEdges, status, id]);
 
   if (status === "error") {
     return (

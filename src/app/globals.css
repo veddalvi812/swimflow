@@ -183,6 +183,10 @@ body {
   opacity: 1;
   transform: scale(1.4);
 }
+.tool-armed .react-flow__pane,
+.tool-armed .react-flow__node {
+  cursor: crosshair !important;
+}
 .react-flow__handle:hover {
   background: #3b82f6 !important;
 }
