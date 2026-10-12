@@ -13,6 +13,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize,
+  Plus,
+  Save,
+  Upload,
 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
 import {
@@ -65,7 +68,6 @@ function drawNode(
   ctx.save();
 
   if (nodeType === "decision") {
-    // Diamond
     const cx = x + w / 2;
     const cy = y + h / 2;
     ctx.beginPath();
@@ -74,13 +76,12 @@ function drawNode(
     ctx.lineTo(cx, y + h);
     ctx.lineTo(x, cy);
     ctx.closePath();
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#18181b";
     ctx.fill();
     ctx.strokeStyle = "#f59e0b";
     ctx.lineWidth = 2;
     ctx.stroke();
   } else if (nodeType === "start" || nodeType === "end") {
-    // Pill / stadium shape
     const r = h / 2;
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -89,35 +90,32 @@ function drawNode(
     ctx.lineTo(x + r, y + h);
     ctx.arc(x + r, y + r, r, Math.PI / 2, -Math.PI / 2);
     ctx.closePath();
-    ctx.fillStyle = nodeType === "start" ? "#dcfce7" : "#fee2e2";
+    ctx.fillStyle = nodeType === "start" ? "#166534" : "#991b1b";
     ctx.fill();
-    ctx.strokeStyle = nodeType === "start" ? "#16a34a" : "#dc2626";
+    ctx.strokeStyle = nodeType === "start" ? "#22c55e" : "#ef4444";
     ctx.lineWidth = 2;
     ctx.stroke();
   } else if (nodeType === "subprocess") {
-    // Double-border rectangle
     const r = 8;
     roundRect(ctx, x, y, w, h, r);
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#18181b";
     ctx.fill();
-    ctx.strokeStyle = "#6366f1";
+    ctx.strokeStyle = "#818cf8";
     ctx.lineWidth = 2;
     ctx.stroke();
     roundRect(ctx, x + 4, y + 4, w - 8, h - 8, r - 2);
     ctx.stroke();
   } else {
-    // Regular rectangle
     const r = 8;
     roundRect(ctx, x, y, w, h, r);
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#18181b";
     ctx.fill();
-    ctx.strokeStyle = "#64748b";
+    ctx.strokeStyle = "#3f3f46";
     ctx.lineWidth = 2;
     ctx.stroke();
   }
 
-  // Label text
-  ctx.fillStyle = "#1e293b";
+  ctx.fillStyle = "#f2efe9";
   ctx.font = "bold 13px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -214,9 +212,9 @@ function drawArrow(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const tw = ctx.measureText(label).width + 8;
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#0a0a0b";
     ctx.fillRect(midX - tw / 2, midY - 10, tw, 20);
-    ctx.fillStyle = "#1e293b";
+    ctx.fillStyle = "#f2efe9";
     ctx.fillText(label, midX, midY);
   }
 
@@ -228,6 +226,9 @@ export function Toolbar() {
   const diagram = useDiagramStore((s) => s.diagram);
   const nodes = useDiagramStore((s) => s.nodes);
   const lanes = useDiagramStore((s) => s.lanes);
+  const addNode = useDiagramStore((s) => s.addNode);
+  const exportJSON = useDiagramStore((s) => s.exportJSON);
+  const importJSON = useDiagramStore((s) => s.importJSON);
   const rf = useReactFlow();
 
   const exportPng = () => {
@@ -244,12 +245,10 @@ export function Toolbar() {
     const ctx = canvas.getContext("2d")!;
     ctx.scale(scale, scale);
 
-    // White background
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#0a0a0b";
     ctx.fillRect(0, 0, cw, ch);
 
-    // Title
-    ctx.fillStyle = "#0f172a";
+    ctx.fillStyle = "#f2efe9";
     ctx.font = "bold 18px Inter, system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.fillText(diagram.title, pad, pad - 10);
@@ -257,34 +256,28 @@ export function Toolbar() {
     const offsetX = pad;
     const offsetY = pad;
 
-    // Draw lanes
     for (const lane of lanes) {
       const lx = lane.x + offsetX;
       const ly = lane.y + offsetY;
-      // Lane body
       ctx.fillStyle = lane.color;
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha = 0.08;
       ctx.fillRect(lx, ly, lane.width, lane.height);
       ctx.globalAlpha = 1;
-      // Lane header
       ctx.fillStyle = lane.color;
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.15;
       ctx.fillRect(lx, ly, LANE_HEADER_WIDTH, lane.height);
       ctx.globalAlpha = 1;
-      // Header border
-      ctx.strokeStyle = "#e2e8f0";
+      ctx.strokeStyle = "#27272a";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(lx + LANE_HEADER_WIDTH, ly);
       ctx.lineTo(lx + LANE_HEADER_WIDTH, ly + lane.height);
       ctx.stroke();
-      // Bottom border
       ctx.beginPath();
       ctx.moveTo(lx, ly + lane.height);
       ctx.lineTo(lx + lane.width, ly + lane.height);
       ctx.stroke();
-      // Lane label
-      ctx.fillStyle = "#1e293b";
+      ctx.fillStyle = "#f2efe9";
       ctx.font = "bold 13px Inter, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -324,7 +317,7 @@ export function Toolbar() {
         }
       }
 
-      const color = edge.type === "exception" ? "#dc2626" : "#64748b";
+      const color = edge.type === "exception" ? "#ef4444" : "#71717a";
       const dashed = edge.type === "conditional";
       drawArrow(ctx, fx, fy, tx, ty, color, dashed, edge.label);
     }
@@ -345,8 +338,42 @@ export function Toolbar() {
     a.remove();
   };
 
+  const handleAddNode = () => {
+    const firstLane = diagram.lanes[0];
+    if (firstLane) addNode(firstLane.id);
+  };
+
+  const handleSaveJSON = () => {
+    const json = exportJSON();
+    const blob = new Blob([json], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${diagram.title || "swimlane"}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const handleLoadJSON = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      file.text().then((text) => {
+        if (!importJSON(text)) {
+          alert("Invalid diagram JSON file.");
+        }
+      });
+    };
+    input.click();
+  };
+
   return (
     <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-1 py-0.5 shadow-sm">
+      <ToolbarBtn icon={Plus} label="Add Node" onClick={handleAddNode} />
       <ToolbarBtn icon={LayoutDashboard} label="Auto Layout" onClick={relayout} />
 
       <div className="mx-1 h-5 w-px bg-[var(--border)]" />
@@ -357,6 +384,8 @@ export function Toolbar() {
 
       <div className="mx-1 h-5 w-px bg-[var(--border)]" />
 
+      <ToolbarBtn icon={Save} label="Save JSON" onClick={handleSaveJSON} />
+      <ToolbarBtn icon={Upload} label="Load JSON" onClick={handleLoadJSON} />
       <ToolbarBtn icon={Download} label="Export PNG" onClick={exportPng} />
     </div>
   );

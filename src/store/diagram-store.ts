@@ -23,12 +23,16 @@ interface DiagramStore {
   setEditingNode: (id: string | null) => void;
   relayout: () => void;
 
+  addNode: (lane: string, type?: DiagramNode["type"]) => void;
+  addEdge: (from: string, to: string) => void;
   updateNode: (id: string, patch: Partial<DiagramNode>) => void;
   updateEdge: (id: string, patch: Partial<DiagramEdge>) => void;
   updateLane: (id: string, patch: Partial<Lane>) => void;
   deleteNode: (id: string) => void;
   deleteEdge: (id: string) => void;
   updateTitle: (title: string) => void;
+  exportJSON: () => string;
+  importJSON: (json: string) => boolean;
 }
 
 function applyLayout(diagram: SwimlaneDiagram) {
@@ -61,6 +65,24 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
     const { diagram } = get();
     const { nodes, edges, lanes } = applyLayout(diagram);
     set({ nodes, edges, lanes });
+  },
+
+  addNode: (lane, type = "process") => {
+    const { diagram } = get();
+    const id = `n-${Date.now()}`;
+    const node: DiagramNode = { id, type, label: "New Step", lane };
+    const updated = { ...diagram, nodes: [...diagram.nodes, node] };
+    const { nodes, edges, lanes } = applyLayout(updated);
+    set({ diagram: updated, nodes, edges, lanes, selectedNodeId: id, editingNodeId: id });
+  },
+
+  addEdge: (from, to) => {
+    const { diagram } = get();
+    const id = `e-${Date.now()}`;
+    const edge: DiagramEdge = { id, from, to, type: "default" };
+    const updated = { ...diagram, edges: [...diagram.edges, edge] };
+    const { nodes, edges, lanes } = applyLayout(updated);
+    set({ diagram: updated, nodes, edges, lanes });
   },
 
   updateNode: (id, patch) => {
@@ -117,5 +139,27 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
   updateTitle: (title) => {
     const { diagram } = get();
     set({ diagram: { ...diagram, title } });
+  },
+
+  exportJSON: () => {
+    return JSON.stringify(get().diagram, null, 2);
+  },
+
+  importJSON: (json) => {
+    try {
+      const trimmed = json.trim();
+      const str = trimmed.startsWith("```")
+        ? trimmed.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "")
+        : trimmed;
+      const parsed = JSON.parse(str) as SwimlaneDiagram;
+      if (parsed.lanes && parsed.nodes && parsed.edges) {
+        const { nodes, edges, lanes } = applyLayout(parsed);
+        set({ diagram: parsed, nodes, edges, lanes, selectedNodeId: null, selectedEdgeId: null, editingNodeId: null });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   },
 }));
