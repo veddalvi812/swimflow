@@ -36,6 +36,7 @@ import { RightPanel } from "./RightPanel";
 import { ToolRail } from "./ToolRail";
 import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode, TimelineNode, TableNode } from "./nodes/FreeNodes";
 import { useFreeStore, isFreeId } from "@/store/free-store";
+import { undo, redo } from "@/store/history";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const nodeTypes = {
@@ -182,8 +183,6 @@ function EditorCanvas({ backHref }: { backHref: string }) {
   const addEdgeAction = useDiagramStore((s) => s.addEdge);
   const deleteNode = useDiagramStore((s) => s.deleteNode);
   const deleteEdge = useDiagramStore((s) => s.deleteEdge);
-  const undo = useDiagramStore((s) => s.undo);
-  const redo = useDiagramStore((s) => s.redo);
 
   const handleConnect: OnConnect = useCallback(
     (connection) => {
@@ -225,7 +224,7 @@ function EditorCanvas({ backHref }: { backHref: string }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo, deleteNode, deleteEdge]);
+  }, [deleteNode, deleteEdge]);
 
   return (
     <div className={tool ? "tool-armed" : ""} style={{ width: "100vw", height: "100vh", background: "var(--background)" }}>

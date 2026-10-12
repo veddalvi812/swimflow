@@ -1,5 +1,6 @@
 "use client";
 
+import { useHistory, undo, redo } from "@/store/history";
 import { useDiagramStore } from "@/store/diagram-store";
 import { Button } from "@/components/ui/button";
 import {
@@ -234,10 +235,8 @@ export function Toolbar({ onCloud }: { onCloud?: () => void }) {
   const addNode = useDiagramStore((s) => s.addNode);
   const exportJSON = useDiagramStore((s) => s.exportJSON);
   const importJSON = useDiagramStore((s) => s.importJSON);
-  const undo = useDiagramStore((s) => s.undo);
-  const redo = useDiagramStore((s) => s.redo);
-  const canUndo = useDiagramStore((s) => s._past.length > 0);
-  const canRedo = useDiagramStore((s) => s._future.length > 0);
+  const canUndo = useHistory((s) => s.past.length > 0);
+  const canRedo = useHistory((s) => s.future.length > 0);
   const rf = useReactFlow();
 
   const exportPng = () => {

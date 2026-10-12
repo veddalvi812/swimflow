@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { record, registerHistory, clearHistory } from "./history";
 import { buildFlowchart, STARTER_FLOW, type FlowSpec } from "@/lib/flowchart";
 import {
   applyNodeChanges,
@@ -13,7 +14,7 @@ import {
 } from "@xyflow/react";
 
 // Free-form canvas objects (stickies, text, shapes, frames) that live beside the swimlane diagram.
-// ponytail: no undo/redo for these yet; Ctrl+Z only covers the swimlane. Add a history stack when needed.
+// Undo/redo: snapshots of {nodes, edges}, ordered against the swimlane via store/history.ts.
 
 export type Tool = "sticky" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "kanban" | "timeline" | "table" | "flowchart";
 
@@ -91,7 +92,15 @@ export function snapshotOf(nodes: Node[], edges: Edge[]) {
   };
 }
 
+type Snap = { nodes: Node[]; edges: Edge[] };
+const MAX_HISTORY = 50;
+
 interface FreeStore {
+  _past: Snap[];
+  _future: Snap[];
+  undo: () => void;
+  redo: () => void;
+  replace: (free?: { nodes: Node[]; edges: Edge[] }) => void;
   nodes: Node[];
   edges: Edge[];
   tool: Tool | null;
@@ -109,7 +118,41 @@ interface FreeStore {
   load: (free?: { nodes: Node[]; edges: Edge[] }) => void;
 }
 
-export const useFreeStore = create<FreeStore>((set, get) => ({
+export const useFreeStore = create<FreeStore>((set, get) => {
+  // Pushes the current state onto the undo stack. Repeated saves with the same key inside `windowMs`
+  // (typing in a field, one delete touching nodes and edges) collapse into a single undo step.
+  let lastKey = "";
+  let lastAt = 0;
+  let gesture = false;
+  const save = (key = "", windowMs = 0) => {
+    const now = Date.now();
+    const merge = key !== "" && key === lastKey && now - lastAt < windowMs;
+    lastKey = key;
+    lastAt = now;
+    if (merge) return;
+    const { nodes, edges, _past } = get();
+    set({ _past: [..._past.slice(-(MAX_HISTORY - 1)), { nodes, edges }], _future: [] });
+    record("f");
+  };
+
+  return {
+  _past: [],
+  _future: [],
+
+  undo: () => {
+    const { _past, _future, nodes, edges } = get();
+    const prev = _past[_past.length - 1];
+    if (!prev) return;
+    set({ ...prev, _past: _past.slice(0, -1), _future: [..._future, { nodes, edges }] });
+  },
+
+  redo: () => {
+    const { _past, _future, nodes, edges } = get();
+    const next = _future[_future.length - 1];
+    if (!next) return;
+    set({ ...next, _past: [..._past, { nodes, edges }], _future: _future.slice(0, -1) });
+  },
+
   nodes: [],
   edges: [],
   tool: null,
@@ -122,6 +165,7 @@ export const useFreeStore = create<FreeStore>((set, get) => ({
     if (!tool) return;
     if (tool === "flowchart") return get().addFlowchart(STARTER_FLOW, pos);
     const d = DEFAULTS[tool];
+    save();
     const node: Node = hydrate({
       id: newId("f"),
       type: d.type,
@@ -134,6 +178,7 @@ export const useFreeStore = create<FreeStore>((set, get) => ({
   },
 
   addFlowchart: (spec, pos) => {
+    save();
     const built = buildFlowchart(spec, pos);
     set({
       nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), ...built.nodes],
@@ -142,14 +187,28 @@ export const useFreeStore = create<FreeStore>((set, get) => ({
     });
   },
 
-  applyNodeChanges: (c) => set({ nodes: applyNodeChanges(c, get().nodes) }),
-  applyEdgeChanges: (c) => set({ edges: applyEdgeChanges(c, get().edges) }),
+  applyNodeChanges: (c) => {
+    const starts = c.some((x) => (x.type === "position" && x.dragging) || (x.type === "dimensions" && x.resizing));
+    const ends = c.some((x) => (x.type === "position" && x.dragging === false) || (x.type === "dimensions" && x.resizing === false));
+    if (c.some((x) => x.type === "remove")) save("rm", 100);
+    else if (starts && !gesture) save();
+    if (starts) gesture = true;
+    if (ends) gesture = false;
+    set({ nodes: applyNodeChanges(c, get().nodes) });
+  },
+  applyEdgeChanges: (c) => {
+    if (c.some((x) => x.type === "remove")) save("rm", 100);
+    set({ edges: applyEdgeChanges(c, get().edges) });
+  },
 
-  update: (id, patch) =>
-    set({ nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)) }),
+  update: (id, patch) => {
+    save(`u:${id}`, 1000);
+    set({ nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)) });
+  },
 
   connect: (c) => {
     if (!c.source || !c.target || c.source === c.target) return;
+    save();
     set({
       edges: [
         ...get().edges,
@@ -169,6 +228,7 @@ export const useFreeStore = create<FreeStore>((set, get) => ({
   paste: () => {
     const { clipboard, nodes } = get();
     if (!clipboard.length) return;
+    save();
     const copies = clipboard.map((n) => ({
       ...n,
       id: newId("f"),
@@ -184,6 +244,8 @@ export const useFreeStore = create<FreeStore>((set, get) => ({
 
   removeSelected: () => {
     const { nodes, edges } = get();
+    if (!nodes.some((n) => n.selected) && !edges.some((e) => e.selected)) return;
+    save();
     const gone = new Set(nodes.filter((n) => n.selected).map((n) => n.id));
     set({
       nodes: nodes.filter((n) => !gone.has(n.id)),
@@ -191,5 +253,21 @@ export const useFreeStore = create<FreeStore>((set, get) => ({
     });
   },
 
-  load: (free) => set({ nodes: (free?.nodes ?? []).map(hydrate), edges: free?.edges ?? [], tool: null }),
-}));
+  // Undoable swap of the whole canvas (JSON panel apply).
+  replace: (free) => {
+    save();
+    set({ nodes: (free?.nodes ?? []).map(hydrate), edges: free?.edges ?? [], tool: null });
+  },
+
+  // Hard reset when a board is opened or closed: nothing before this point can be undone.
+  load: (free) => {
+    set({ nodes: (free?.nodes ?? []).map(hydrate), edges: free?.edges ?? [], tool: null, _past: [], _future: [] });
+    clearHistory();
+  },
+  };
+});
+
+registerHistory("f", {
+  undo: () => useFreeStore.getState().undo(),
+  redo: () => useFreeStore.getState().redo(),
+});

@@ -244,7 +244,7 @@ function JsonPanel() {
       const { free, ...d } = JSON.parse(raw);
       if (!d.lanes || !d.nodes || !d.edges) throw new Error("Needs lanes, nodes and edges");
       setDiagram(d);
-      useFreeStore.getState().load(free);
+      useFreeStore.getState().replace(free);
       setDraft(null);
       setErr("");
     } catch (e) {

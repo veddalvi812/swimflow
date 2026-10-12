@@ -5,6 +5,7 @@ import type { Node, Edge } from "@xyflow/react";
 import type { SwimlaneDiagram, DiagramNode, DiagramEdge, Lane } from "@/types/diagram";
 import { layoutDiagram, type LaneBounds } from "@/lib/layout";
 import { SAMPLE_DIAGRAM, LANE_COLORS } from "@/lib/constants";
+import { record, registerHistory } from "./history";
 
 const MAX_HISTORY = 50;
 
@@ -56,6 +57,7 @@ const initial = applyLayout(SAMPLE_DIAGRAM);
 function commit(get: () => DiagramStore, updated: SwimlaneDiagram, extra?: Partial<DiagramStore>) {
   const { diagram, _past } = get();
   const { nodes, edges, lanes } = applyLayout(updated);
+  record("d");
   return {
     diagram: updated,
     nodes,
@@ -244,3 +246,8 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
     }
   },
 }));
+
+registerHistory("d", {
+  undo: () => useDiagramStore.getState().undo(),
+  redo: () => useDiagramStore.getState().redo(),
+});
