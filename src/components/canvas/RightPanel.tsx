@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { Copy, Trash2 } from "lucide-react";
 import { useDiagramStore } from "@/store/diagram-store";
 import { useFreeStore, snapshotOf, STICKY_COLORS, uid, type KanbanCol } from "@/store/free-store";
+import { useReactFlow } from "@xyflow/react";
+import { FLOW_PROMPT, parseFlow } from "@/lib/flowchart";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { Button } from "@/components/ui/button";
 
@@ -186,6 +188,44 @@ function FreeProperties({ id }: { id: string }) {
   );
 }
 
+function FlowchartPanel() {
+  const { screenToFlowPosition } = useReactFlow();
+  const [paste, setPaste] = useState("");
+  const [err, setErr] = useState("");
+
+  const add = () => {
+    try {
+      const spec = parseFlow(paste);
+      useFreeStore.getState().addFlowchart(spec, screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }));
+      setPaste("");
+      setErr("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Invalid JSON");
+    }
+  };
+
+  return (
+    <div className={card} style={maxH}>
+      <h3 className="text-sm font-semibold">AI flowchart</h3>
+      <p className="text-xs text-[var(--muted-foreground)]">
+        Copy the prompt, give it to any AI, paste the JSON back. You get real shapes you can edit.
+      </p>
+      <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => navigator.clipboard.writeText(FLOW_PROMPT)}>
+        <Copy className="size-3.5" /> Copy AI prompt
+      </Button>
+      <textarea
+        value={paste}
+        onChange={(e) => setPaste(e.target.value)}
+        placeholder="Paste JSON here"
+        rows={8}
+        className="w-full resize-none rounded-md border border-[var(--border)] bg-[var(--background)] p-2 font-mono text-[11px] outline-none focus:border-[var(--border-focus)]"
+      />
+      {err && <p className="text-xs text-[var(--error)]">{err}</p>}
+      <Button size="sm" onClick={add} disabled={!paste.trim()}>Add to canvas</Button>
+    </div>
+  );
+}
+
 function JsonPanel() {
   const diagram = useDiagramStore((s) => s.diagram);
   const setDiagram = useDiagramStore((s) => s.setDiagram);
@@ -238,7 +278,7 @@ function JsonPanel() {
 }
 
 export function RightPanel() {
-  const [tab, setTab] = useState<"props" | "json">("props");
+  const [tab, setTab] = useState<"props" | "json" | "flow">("props");
   const freeSelected = useFreeStore((s) => s.nodes.find((n) => n.selected));
   const freeSelectedId = freeSelected?.id;
 
@@ -258,8 +298,9 @@ export function RightPanel() {
       <div className="pointer-events-auto flex gap-1 rounded-lg bg-[var(--surface)] p-1">
         {tabBtn("props", "Properties")}
         {tabBtn("json", "JSON")}
+        {tabBtn("flow", "Flowchart")}
       </div>
-      {tab === "json" ? <JsonPanel /> : freeSelectedId ? (
+      {tab === "json" ? <JsonPanel /> : tab === "flow" ? <FlowchartPanel /> : freeSelectedId ? (
         freeSelected?.type && BLOCKS[freeSelected.type] ? <BlockProperties id={freeSelectedId} kind={freeSelected.type} /> : <FreeProperties id={freeSelectedId} />
       ) : <PropertiesPanel />}
     </div>

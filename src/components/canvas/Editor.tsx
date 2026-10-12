@@ -13,6 +13,7 @@ import {
   useReactFlow,
   useNodesInitialized,
   ConnectionMode,
+  MarkerType,
   type NodeChange,
   type EdgeChange,
   type OnNodesChange,
@@ -101,7 +102,10 @@ function EditorCanvas({ backHref }: { backHref: string }) {
 
   // Swimlane objects stay in local state; free-form objects (ids "f-…"/"fe-…") live in the free store.
   const allNodes = useMemo(() => [...nodes, ...freeNodes], [nodes, freeNodes]);
-  const allEdges = useMemo(() => [...edges, ...freeEdges], [edges, freeEdges]);
+  const allEdges = useMemo(
+    () => [...edges, ...freeEdges.map((e) => ({ ...e, type: "smoothstep", markerEnd: { type: MarkerType.ArrowClosed } }))],
+    [edges, freeEdges]
+  );
 
   const handleNodesChange: OnNodesChange = useCallback(
     (changes) => {

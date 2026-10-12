@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { buildFlowchart, STARTER_FLOW, type FlowSpec } from "@/lib/flowchart";
 import {
   applyNodeChanges,
   applyEdgeChanges,
@@ -14,7 +15,7 @@ import {
 // Free-form canvas objects (stickies, text, shapes, frames) that live beside the swimlane diagram.
 // ponytail: no undo/redo for these yet; Ctrl+Z only covers the swimlane. Add a history stack when needed.
 
-export type Tool = "sticky" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "kanban" | "timeline" | "table";
+export type Tool = "sticky" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "kanban" | "timeline" | "table" | "flowchart";
 
 export interface KanbanCol {
   id: string;
@@ -32,7 +33,7 @@ export const uid = () => Math.random().toString(36).slice(2, 9);
 
 export const STICKY_COLORS = ["#fef08a", "#bbf7d0", "#bfdbfe", "#fecaca", "#e9d5ff"];
 
-const DEFAULTS: Record<Tool, { type: string; data: Record<string, unknown>; w?: number; h?: number }> = {
+const DEFAULTS: Record<Exclude<Tool, "flowchart">, { type: string; data: Record<string, unknown>; w?: number; h?: number }> = {
   sticky: { type: "sticky", data: { text: "New note", color: STICKY_COLORS[0] }, w: 160, h: 160 },
   text: { type: "text", data: { text: "Text" } },
   rect: { type: "shape", data: { text: "", shape: "rect", color: "#ffffff" }, w: 140, h: 80 },
@@ -84,8 +85,8 @@ const hydrate = (n: Node): Node => ({ ...n, selected: false, zIndex: n.type === 
 export function snapshotOf(nodes: Node[], edges: Edge[]) {
   return {
     nodes: nodes.map(({ id, type, position, data, width, height }) => ({ id, type, position, data, width, height })),
-    edges: edges.map(({ id, source, target, sourceHandle, targetHandle }) => ({
-      id, source, target, sourceHandle, targetHandle,
+    edges: edges.map(({ id, source, target, sourceHandle, targetHandle, label }) => ({
+      id, source, target, sourceHandle, targetHandle, label,
     })),
   };
 }
@@ -97,6 +98,7 @@ interface FreeStore {
   clipboard: Node[];
   setTool: (t: Tool | null) => void;
   place: (pos: { x: number; y: number }) => void;
+  addFlowchart: (spec: FlowSpec, pos: { x: number; y: number }) => void;
   applyNodeChanges: (c: NodeChange[]) => void;
   applyEdgeChanges: (c: EdgeChange[]) => void;
   update: (id: string, patch: Record<string, unknown>) => void;
@@ -118,6 +120,7 @@ export const useFreeStore = create<FreeStore>((set, get) => ({
   place: (pos) => {
     const { tool, nodes } = get();
     if (!tool) return;
+    if (tool === "flowchart") return get().addFlowchart(STARTER_FLOW, pos);
     const d = DEFAULTS[tool];
     const node: Node = hydrate({
       id: newId("f"),
@@ -128,6 +131,15 @@ export const useFreeStore = create<FreeStore>((set, get) => ({
       height: d.h,
     });
     set({ nodes: [...nodes.map((n) => ({ ...n, selected: false })), { ...node, selected: true }], tool: null });
+  },
+
+  addFlowchart: (spec, pos) => {
+    const built = buildFlowchart(spec, pos);
+    set({
+      nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), ...built.nodes],
+      edges: [...get().edges, ...built.edges],
+      tool: null,
+    });
   },
 
   applyNodeChanges: (c) => set({ nodes: applyNodeChanges(c, get().nodes) }),
