@@ -4,7 +4,7 @@ import { create } from "zustand";
 import type { Node, Edge } from "@xyflow/react";
 import type { SwimlaneDiagram, DiagramNode, DiagramEdge, Lane } from "@/types/diagram";
 import { layoutDiagram, type LaneBounds } from "@/lib/layout";
-import { SAMPLE_DIAGRAM } from "@/lib/constants";
+import { SAMPLE_DIAGRAM, LANE_COLORS } from "@/lib/constants";
 
 const MAX_HISTORY = 50;
 
@@ -38,6 +38,8 @@ interface DiagramStore {
   updateNode: (id: string, patch: Partial<DiagramNode>) => void;
   updateEdge: (id: string, patch: Partial<DiagramEdge>) => void;
   updateLane: (id: string, patch: Partial<Lane>) => void;
+  addLane: () => void;
+  deleteLane: (id: string) => void;
   deleteNode: (id: string) => void;
   deleteEdge: (id: string) => void;
   updateTitle: (title: string) => void;
@@ -171,6 +173,28 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
     const updated = {
       ...diagram,
       lanes: diagram.lanes.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+    };
+    set(commit(get, updated));
+  },
+
+  addLane: () => {
+    const { diagram } = get();
+    const id = `lane-${Date.now()}`;
+    const color = LANE_COLORS[diagram.lanes.length % LANE_COLORS.length];
+    const lane: Lane = { id, label: `Lane ${diagram.lanes.length + 1}`, color };
+    const updated = { ...diagram, lanes: [...diagram.lanes, lane] };
+    set(commit(get, updated));
+  },
+
+  deleteLane: (id) => {
+    const { diagram } = get();
+    if (diagram.lanes.length <= 1) return;
+    const nodeIds = new Set(diagram.nodes.filter((n) => n.lane === id).map((n) => n.id));
+    const updated = {
+      ...diagram,
+      lanes: diagram.lanes.filter((l) => l.id !== id),
+      nodes: diagram.nodes.filter((n) => n.lane !== id),
+      edges: diagram.edges.filter((e) => !nodeIds.has(e.from) && !nodeIds.has(e.to)),
     };
     set(commit(get, updated));
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -28,6 +28,7 @@ import { LaneNode } from "./nodes/LaneNode";
 import { Toolbar } from "./Toolbar";
 import { PromptBar } from "./PromptBar";
 import { PropertiesPanel } from "./PropertiesPanel";
+import { CloudPanel } from "./CloudPanel";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const nodeTypes = {
@@ -129,6 +130,8 @@ function EditorCanvas() {
     setEditingNode(null);
   }, [selectNode, setEditingNode]);
 
+  const [showCloud, setShowCloud] = useState(false);
+
   const addEdgeAction = useDiagramStore((s) => s.addEdge);
   const deleteNode = useDiagramStore((s) => s.deleteNode);
   const deleteEdge = useDiagramStore((s) => s.deleteEdge);
@@ -210,11 +213,15 @@ function EditorCanvas() {
         </Panel>
 
         <Panel position="top-center" className="pointer-events-none">
-          <Toolbar />
+          <Toolbar onCloud={() => setShowCloud((v) => !v)} />
         </Panel>
 
         <Panel position="top-right" className="pointer-events-none mt-14">
-          <PropertiesPanel />
+          {showCloud ? (
+            <CloudPanel onClose={() => setShowCloud(false)} />
+          ) : (
+            <PropertiesPanel />
+          )}
         </Panel>
 
         <Panel position="bottom-center" className="pointer-events-none mb-4 flex w-full justify-center px-4">

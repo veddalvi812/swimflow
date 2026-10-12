@@ -3,7 +3,7 @@
 import { useDiagramStore } from "@/store/diagram-store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Plus } from "lucide-react";
 import type { NodeType } from "@/types/diagram";
 
 const NODE_TYPE_LABELS: Record<NodeType, string> = {
@@ -217,6 +217,8 @@ function DiagramProperties() {
   const diagram = useDiagramStore((s) => s.diagram);
   const updateTitle = useDiagramStore((s) => s.updateTitle);
   const updateLane = useDiagramStore((s) => s.updateLane);
+  const addLane = useDiagramStore((s) => s.addLane);
+  const deleteLane = useDiagramStore((s) => s.deleteLane);
 
   return (
     <>
@@ -235,7 +237,12 @@ function DiagramProperties() {
 
       <Separator />
 
-      <h3 className="text-sm font-semibold">Lanes</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Lanes</h3>
+        <Button variant="ghost" size="icon-xs" onClick={addLane}>
+          <Plus className="size-3.5" />
+        </Button>
+      </div>
 
       <div className="flex flex-col gap-2">
         {diagram.lanes.map((lane) => (
@@ -252,6 +259,15 @@ function DiagramProperties() {
               onChange={(e) => updateLane(lane.id, { label: e.target.value })}
               className="h-7 flex-1 rounded border border-[var(--border)] bg-[var(--background)] px-2 text-xs outline-none focus:border-[var(--border-focus)]"
             />
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => deleteLane(lane.id)}
+              disabled={diagram.lanes.length <= 1}
+              className="shrink-0 text-[var(--muted-foreground)] hover:text-[var(--error)]"
+            >
+              <Trash2 className="size-3" />
+            </Button>
           </div>
         ))}
       </div>

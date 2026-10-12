@@ -18,6 +18,7 @@ import {
   Upload,
   Undo2,
   Redo2,
+  Cloud,
 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
 import {
@@ -80,7 +81,7 @@ function drawNode(
     ctx.lineTo(cx, y + h);
     ctx.lineTo(x, cy);
     ctx.closePath();
-    ctx.fillStyle = "#18181b";
+    ctx.fillStyle = "#ffffff";
     ctx.fill();
     ctx.strokeStyle = "#f59e0b";
     ctx.lineWidth = 2;
@@ -94,7 +95,7 @@ function drawNode(
     ctx.lineTo(x + r, y + h);
     ctx.arc(x + r, y + r, r, Math.PI / 2, -Math.PI / 2);
     ctx.closePath();
-    ctx.fillStyle = nodeType === "start" ? "#166534" : "#991b1b";
+    ctx.fillStyle = nodeType === "start" ? "#dcfce7" : "#ffe4e6";
     ctx.fill();
     ctx.strokeStyle = nodeType === "start" ? "#22c55e" : "#ef4444";
     ctx.lineWidth = 2;
@@ -102,7 +103,7 @@ function drawNode(
   } else if (nodeType === "subprocess") {
     const r = 8;
     roundRect(ctx, x, y, w, h, r);
-    ctx.fillStyle = "#18181b";
+    ctx.fillStyle = "#ffffff";
     ctx.fill();
     ctx.strokeStyle = "#818cf8";
     ctx.lineWidth = 2;
@@ -112,14 +113,14 @@ function drawNode(
   } else {
     const r = 8;
     roundRect(ctx, x, y, w, h, r);
-    ctx.fillStyle = "#18181b";
+    ctx.fillStyle = "#ffffff";
     ctx.fill();
-    ctx.strokeStyle = "#3f3f46";
+    ctx.strokeStyle = "#d4d4d8";
     ctx.lineWidth = 2;
     ctx.stroke();
   }
 
-  ctx.fillStyle = "#f2efe9";
+  ctx.fillStyle = "#1a1a1a";
   ctx.font = "bold 13px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -216,16 +217,16 @@ function drawArrow(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const tw = ctx.measureText(label).width + 8;
-    ctx.fillStyle = "#0a0a0b";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(midX - tw / 2, midY - 10, tw, 20);
-    ctx.fillStyle = "#f2efe9";
+    ctx.fillStyle = "#1a1a1a";
     ctx.fillText(label, midX, midY);
   }
 
   ctx.restore();
 }
 
-export function Toolbar() {
+export function Toolbar({ onCloud }: { onCloud?: () => void }) {
   const relayout = useDiagramStore((s) => s.relayout);
   const diagram = useDiagramStore((s) => s.diagram);
   const nodes = useDiagramStore((s) => s.nodes);
@@ -253,10 +254,10 @@ export function Toolbar() {
     const ctx = canvas.getContext("2d")!;
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = "#0a0a0b";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, cw, ch);
 
-    ctx.fillStyle = "#f2efe9";
+    ctx.fillStyle = "#1a1a1a";
     ctx.font = "bold 18px Inter, system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.fillText(diagram.title, pad, pad - 10);
@@ -268,14 +269,14 @@ export function Toolbar() {
       const lx = lane.x + offsetX;
       const ly = lane.y + offsetY;
       ctx.fillStyle = lane.color;
-      ctx.globalAlpha = 0.08;
+      ctx.globalAlpha = 0.1;
       ctx.fillRect(lx, ly, lane.width, lane.height);
       ctx.globalAlpha = 1;
       ctx.fillStyle = lane.color;
-      ctx.globalAlpha = 0.15;
+      ctx.globalAlpha = 0.18;
       ctx.fillRect(lx, ly, LANE_HEADER_WIDTH, lane.height);
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = "#27272a";
+      ctx.strokeStyle = "#e4e4e7";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(lx + LANE_HEADER_WIDTH, ly);
@@ -285,7 +286,7 @@ export function Toolbar() {
       ctx.moveTo(lx, ly + lane.height);
       ctx.lineTo(lx + lane.width, ly + lane.height);
       ctx.stroke();
-      ctx.fillStyle = "#f2efe9";
+      ctx.fillStyle = "#1a1a1a";
       ctx.font = "bold 13px Inter, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -325,7 +326,7 @@ export function Toolbar() {
         }
       }
 
-      const color = edge.type === "exception" ? "#ef4444" : "#71717a";
+      const color = edge.type === "exception" ? "#ef4444" : "#a1a1aa";
       const dashed = edge.type === "conditional";
       drawArrow(ctx, fx, fy, tx, ty, color, dashed, edge.label);
     }
@@ -400,6 +401,10 @@ export function Toolbar() {
       <ToolbarBtn icon={Save} label="Save JSON" onClick={handleSaveJSON} />
       <ToolbarBtn icon={Upload} label="Load JSON" onClick={handleLoadJSON} />
       <ToolbarBtn icon={Download} label="Export PNG" onClick={exportPng} />
+
+      <div className="mx-1 h-5 w-px bg-[var(--border)]" />
+
+      <ToolbarBtn icon={Cloud} label="Cloud Save" onClick={onCloud ?? (() => {})} />
     </div>
   );
 }

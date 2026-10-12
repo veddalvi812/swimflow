@@ -24,7 +24,7 @@ Rules:
 - Every node's "lane" must reference a valid lane id
 - Edge "from"/"to" must reference valid node ids
 - Use lowercase-kebab-case for all ids
-- Assign distinct hex colors to lanes from: #dbeafe, #dcfce7, #fef3c7, #ffe4e6, #f3e8ff, #cffafe, #ffedd5, #f1f5f9
+- Assign distinct hex colors to lanes from: #3b82f6, #22c55e, #f59e0b, #ef4444, #a855f7, #06b6d4, #f97316, #64748b
 
 Process to diagram:
 `;

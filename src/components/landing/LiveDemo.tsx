@@ -41,14 +41,14 @@ export function LiveDemo() {
     <div className="mt-12">
       <ScrollReveal delay={100}>
         {/* Input area */}
-        <div className="rounded-xl border border-[#27272a] bg-[#111113] p-5">
+        <div className="rounded-xl border border-[#e4e4e7] bg-[#f4f4f5] p-5">
           <label className="mb-2 block text-sm font-medium text-[#71717a]">Process description</label>
           <div className="flex gap-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 rounded-lg border border-[#27272a] bg-[#0a0a0b] px-4 py-2.5 text-sm text-[#f2efe9] placeholder-[#52525b] outline-none transition-colors focus:border-[#3b82f6]"
+              className="flex-1 rounded-lg border border-[#e4e4e7] bg-white px-4 py-2.5 text-sm text-[#1a1a1a] placeholder-[#a1a1aa] outline-none transition-colors focus:border-[#3b82f6]"
               placeholder="Describe your process..."
             />
             <button
@@ -64,23 +64,23 @@ export function LiveDemo() {
         {/* Result */}
         <div className={`mt-4 grid gap-4 transition-all duration-500 lg:grid-cols-2 ${showResult ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
           {/* JSON output */}
-          <div className="rounded-xl border border-[#27272a] bg-[#111113] p-5">
-            <p className="mb-3 text-xs font-medium text-[#52525b] uppercase tracking-wider">JSON Output</p>
-            <pre className="overflow-x-auto whitespace-pre font-mono text-[11px] leading-relaxed text-[#71717a]">
+          <div className="rounded-xl border border-[#e4e4e7] bg-[#f4f4f5] p-5">
+            <p className="mb-3 text-xs font-medium text-[#a1a1aa] uppercase tracking-wider">JSON Output</p>
+            <pre className="overflow-x-auto whitespace-pre font-mono text-[11px] leading-relaxed text-[#52525b]">
               {JSON.stringify(SAMPLE_RESULT, null, 2)}
             </pre>
           </div>
 
           {/* Visual preview */}
-          <div className="rounded-xl border border-[#27272a] bg-[#111113] p-5">
-            <p className="mb-3 text-xs font-medium text-[#52525b] uppercase tracking-wider">Diagram Preview</p>
+          <div className="rounded-xl border border-[#e4e4e7] bg-[#f4f4f5] p-5">
+            <p className="mb-3 text-xs font-medium text-[#a1a1aa] uppercase tracking-wider">Diagram Preview</p>
             <svg viewBox="0 0 400 260" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-              <rect width="400" height="260" fill="#0a0a0b" rx="6" />
+              <rect width="400" height="260" fill="#fafafa" rx="6" />
               {/* Lanes */}
               {SAMPLE_RESULT.lanes.map((lane, i) => (
                 <g key={lane.id}>
-                  <rect x="10" y={10 + i * 82} width="380" height="76" rx="4" fill={laneColors[i]} fillOpacity="0.05" stroke={laneColors[i]} strokeWidth="0.3" strokeOpacity="0.3" />
-                  <text x="22" y={30 + i * 82} fill={laneColors[i]} fontSize="9" fontWeight="600" fontFamily="Inter, sans-serif" opacity="0.7">{lane.label}</text>
+                  <rect x="10" y={10 + i * 82} width="380" height="76" rx="4" fill={laneColors[i]} fillOpacity="0.07" stroke={laneColors[i]} strokeWidth="0.3" strokeOpacity="0.3" />
+                  <text x="22" y={30 + i * 82} fill={laneColors[i]} fontSize="9" fontWeight="600" fontFamily="Inter, sans-serif" opacity="0.8">{lane.label}</text>
                 </g>
               ))}
               {/* Nodes */}
@@ -91,10 +91,10 @@ export function LiveDemo() {
                 const y = 40 + laneIdx * 82;
                 return (
                   <g key={node.id}>
-                    <rect x={x} y={y} width={110} height={30} rx={6} fill="#18181b" stroke="#27272a" strokeWidth="0.5">
+                    <rect x={x} y={y} width={110} height={30} rx={6} fill="white" stroke="#e4e4e7" strokeWidth="0.5">
                       <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${0.1 + i * 0.1}s`} fill="freeze" />
                     </rect>
-                    <text x={x + 55} y={y + 19} fill="#f2efe9" fontSize="9" fontWeight="500" fontFamily="Inter, sans-serif" textAnchor="middle">
+                    <text x={x + 55} y={y + 19} fill="#1a1a1a" fontSize="9" fontWeight="500" fontFamily="Inter, sans-serif" textAnchor="middle">
                       {node.label}
                     </text>
                   </g>

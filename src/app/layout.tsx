@@ -23,8 +23,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      data-theme="dark"
-      className={cn(inter.variable, jetbrainsMono.variable, "font-sans dark")}
+      className={cn(inter.variable, jetbrainsMono.variable, "font-sans")}
     >
       <body className="antialiased">{children}</body>
     </html>

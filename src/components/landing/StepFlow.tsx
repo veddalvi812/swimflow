@@ -41,11 +41,11 @@ export function StepFlow() {
     <div className="mt-16 grid gap-4 md:grid-cols-3">
       {steps.map((step, i) => (
         <ScrollReveal key={step.title} delay={i * 100}>
-          <div className="group relative rounded-xl border border-[#27272a] bg-[#111113] p-6 transition-colors hover:border-[#3f3f46]">
-            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-[#18181b]">
+          <div className="group relative rounded-xl border border-[#e4e4e7] bg-[#f4f4f5] p-6 transition-colors hover:border-[#d4d4d8]">
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-[#e4e4e7]">
               {step.icon}
             </div>
-            <h3 className="text-[15px] font-semibold text-[#f2efe9]">{step.title}</h3>
+            <h3 className="text-[15px] font-semibold text-[#1a1a1a]">{step.title}</h3>
             <p className="mt-2.5 text-sm leading-relaxed text-[#71717a]">
               {step.description}
             </p>

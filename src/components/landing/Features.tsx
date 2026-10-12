@@ -51,11 +51,11 @@ export function Features() {
     <div className="mt-14 grid gap-4 sm:grid-cols-2">
       {features.map((feature, i) => (
         <ScrollReveal key={feature.title} delay={i * 80}>
-          <div className="rounded-xl border border-[#27272a] bg-[#111113] p-6 transition-colors hover:border-[#3f3f46]">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-[#18181b]">
+          <div className="rounded-xl border border-[#e4e4e7] bg-[#f4f4f5] p-6 transition-colors hover:border-[#d4d4d8]">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-[#e4e4e7]">
               {feature.icon}
             </div>
-            <h3 className="text-[15px] font-semibold text-[#f2efe9]">{feature.title}</h3>
+            <h3 className="text-[15px] font-semibold text-[#1a1a1a]">{feature.title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-[#71717a]">{feature.description}</p>
           </div>
         </ScrollReveal>

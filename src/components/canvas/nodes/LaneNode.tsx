@@ -18,7 +18,7 @@ export function LaneNode({ data }: NodeProps) {
     >
       <div
         className="absolute inset-0"
-        style={{ backgroundColor: color, opacity: 0.06 }}
+        style={{ backgroundColor: color, opacity: 0.08 }}
       />
       <div
         className="absolute left-0 top-0 flex items-center justify-center border-r border-[var(--border)]"
@@ -26,7 +26,7 @@ export function LaneNode({ data }: NodeProps) {
           width: LANE_HEADER_WIDTH,
           height: laneHeight,
           backgroundColor: color,
-          opacity: 0.12,
+          opacity: 0.15,
         }}
       />
       <div
