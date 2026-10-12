@@ -6,6 +6,8 @@ import type { SwimlaneDiagram, DiagramNode, DiagramEdge, Lane } from "@/types/di
 import { layoutDiagram, type LaneBounds } from "@/lib/layout";
 import { SAMPLE_DIAGRAM } from "@/lib/constants";
 
+const MAX_HISTORY = 50;
+
 interface DiagramStore {
   diagram: SwimlaneDiagram;
   nodes: Node[];
@@ -14,6 +16,14 @@ interface DiagramStore {
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   editingNodeId: string | null;
+
+  // history
+  _past: SwimlaneDiagram[];
+  _future: SwimlaneDiagram[];
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 
   setDiagram: (diagram: SwimlaneDiagram) => void;
   setNodes: (nodes: Node[]) => void;
@@ -41,6 +51,20 @@ function applyLayout(diagram: SwimlaneDiagram) {
 
 const initial = applyLayout(SAMPLE_DIAGRAM);
 
+function commit(get: () => DiagramStore, updated: SwimlaneDiagram, extra?: Partial<DiagramStore>) {
+  const { diagram, _past } = get();
+  const { nodes, edges, lanes } = applyLayout(updated);
+  return {
+    diagram: updated,
+    nodes,
+    edges,
+    lanes,
+    _past: [..._past.slice(-(MAX_HISTORY - 1)), diagram],
+    _future: [],
+    ...extra,
+  };
+}
+
 export const useDiagramStore = create<DiagramStore>((set, get) => ({
   diagram: SAMPLE_DIAGRAM,
   nodes: initial.nodes,
@@ -49,10 +73,50 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
   selectedNodeId: null,
   selectedEdgeId: null,
   editingNodeId: null,
+  _past: [],
+  _future: [],
+
+  canUndo: () => get()._past.length > 0,
+  canRedo: () => get()._future.length > 0,
+
+  undo: () => {
+    const { _past, _future, diagram } = get();
+    if (_past.length === 0) return;
+    const prev = _past[_past.length - 1];
+    const { nodes, edges, lanes } = applyLayout(prev);
+    set({
+      diagram: prev,
+      nodes,
+      edges,
+      lanes,
+      _past: _past.slice(0, -1),
+      _future: [diagram, ..._future],
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      editingNodeId: null,
+    });
+  },
+
+  redo: () => {
+    const { _past, _future, diagram } = get();
+    if (_future.length === 0) return;
+    const next = _future[0];
+    const { nodes, edges, lanes } = applyLayout(next);
+    set({
+      diagram: next,
+      nodes,
+      edges,
+      lanes,
+      _past: [..._past, diagram],
+      _future: _future.slice(1),
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      editingNodeId: null,
+    });
+  },
 
   setDiagram: (diagram) => {
-    const { nodes, edges, lanes } = applyLayout(diagram);
-    set({ diagram, nodes, edges, lanes, selectedNodeId: null, selectedEdgeId: null, editingNodeId: null });
+    set(commit(get, diagram, { selectedNodeId: null, selectedEdgeId: null, editingNodeId: null }));
   },
 
   setNodes: (nodes) => set({ nodes }),
@@ -72,17 +136,16 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
     const id = `n-${Date.now()}`;
     const node: DiagramNode = { id, type, label: "New Step", lane };
     const updated = { ...diagram, nodes: [...diagram.nodes, node] };
-    const { nodes, edges, lanes } = applyLayout(updated);
-    set({ diagram: updated, nodes, edges, lanes, selectedNodeId: id, editingNodeId: id });
+    set(commit(get, updated, { selectedNodeId: id, editingNodeId: id }));
   },
 
   addEdge: (from, to) => {
     const { diagram } = get();
+    if (diagram.edges.some((e) => e.from === from && e.to === to)) return;
     const id = `e-${Date.now()}`;
     const edge: DiagramEdge = { id, from, to, type: "default" };
     const updated = { ...diagram, edges: [...diagram.edges, edge] };
-    const { nodes, edges, lanes } = applyLayout(updated);
-    set({ diagram: updated, nodes, edges, lanes });
+    set(commit(get, updated));
   },
 
   updateNode: (id, patch) => {
@@ -91,8 +154,7 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
       ...diagram,
       nodes: diagram.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
     };
-    const { nodes, edges, lanes } = applyLayout(updated);
-    set({ diagram: updated, nodes, edges, lanes });
+    set(commit(get, updated));
   },
 
   updateEdge: (id, patch) => {
@@ -101,8 +163,7 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
       ...diagram,
       edges: diagram.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)),
     };
-    const { nodes, edges, lanes } = applyLayout(updated);
-    set({ diagram: updated, nodes, edges, lanes });
+    set(commit(get, updated));
   },
 
   updateLane: (id, patch) => {
@@ -111,8 +172,7 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
       ...diagram,
       lanes: diagram.lanes.map((l) => (l.id === id ? { ...l, ...patch } : l)),
     };
-    const { nodes, edges, lanes } = applyLayout(updated);
-    set({ diagram: updated, nodes, edges, lanes });
+    set(commit(get, updated));
   },
 
   deleteNode: (id) => {
@@ -122,8 +182,7 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
       nodes: diagram.nodes.filter((n) => n.id !== id),
       edges: diagram.edges.filter((e) => e.from !== id && e.to !== id),
     };
-    const { nodes, edges, lanes } = applyLayout(updated);
-    set({ diagram: updated, nodes, edges, lanes, selectedNodeId: null });
+    set(commit(get, updated, { selectedNodeId: null }));
   },
 
   deleteEdge: (id) => {
@@ -132,13 +191,12 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
       ...diagram,
       edges: diagram.edges.filter((e) => e.id !== id),
     };
-    const { nodes, edges, lanes } = applyLayout(updated);
-    set({ diagram: updated, nodes, edges, lanes, selectedEdgeId: null });
+    set(commit(get, updated, { selectedEdgeId: null }));
   },
 
   updateTitle: (title) => {
     const { diagram } = get();
-    set({ diagram: { ...diagram, title } });
+    set(commit(get, { ...diagram, title }));
   },
 
   exportJSON: () => {
@@ -153,8 +211,7 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
         : trimmed;
       const parsed = JSON.parse(str) as SwimlaneDiagram;
       if (parsed.lanes && parsed.nodes && parsed.edges) {
-        const { nodes, edges, lanes } = applyLayout(parsed);
-        set({ diagram: parsed, nodes, edges, lanes, selectedNodeId: null, selectedEdgeId: null, editingNodeId: null });
+        set(commit(get, parsed, { selectedNodeId: null, selectedEdgeId: null, editingNodeId: null }));
         return true;
       }
       return false;

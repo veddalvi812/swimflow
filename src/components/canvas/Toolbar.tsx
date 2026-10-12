@@ -16,6 +16,8 @@ import {
   Plus,
   Save,
   Upload,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
 import {
@@ -29,16 +31,18 @@ function ToolbarBtn({
   icon: Icon,
   label,
   onClick,
+  disabled,
 }: {
   icon: React.ElementType;
   label: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button variant="ghost" size="icon" onClick={onClick}>
+          <Button variant="ghost" size="icon" onClick={onClick} disabled={disabled}>
             <Icon className="size-4" />
           </Button>
         }
@@ -229,6 +233,10 @@ export function Toolbar() {
   const addNode = useDiagramStore((s) => s.addNode);
   const exportJSON = useDiagramStore((s) => s.exportJSON);
   const importJSON = useDiagramStore((s) => s.importJSON);
+  const undo = useDiagramStore((s) => s.undo);
+  const redo = useDiagramStore((s) => s.redo);
+  const canUndo = useDiagramStore((s) => s._past.length > 0);
+  const canRedo = useDiagramStore((s) => s._future.length > 0);
   const rf = useReactFlow();
 
   const exportPng = () => {
@@ -373,6 +381,11 @@ export function Toolbar() {
 
   return (
     <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-1 py-0.5 shadow-sm">
+      <ToolbarBtn icon={Undo2} label="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo} />
+      <ToolbarBtn icon={Redo2} label="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo} />
+
+      <div className="mx-1 h-5 w-px bg-[var(--border)]" />
+
       <ToolbarBtn icon={Plus} label="Add Node" onClick={handleAddNode} />
       <ToolbarBtn icon={LayoutDashboard} label="Auto Layout" onClick={relayout} />
 

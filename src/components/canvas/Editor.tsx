@@ -13,6 +13,7 @@ import {
   useNodesInitialized,
   type OnNodesChange,
   type OnEdgesChange,
+  type OnConnect,
   ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -127,6 +128,34 @@ function EditorCanvas() {
     setEditingNode(null);
   }, [selectNode, setEditingNode]);
 
+  const addEdge = useDiagramStore((s) => s.addEdge);
+  const undo = useDiagramStore((s) => s.undo);
+  const redo = useDiagramStore((s) => s.redo);
+
+  const handleConnect: OnConnect = useCallback(
+    (connection) => {
+      if (connection.source && connection.target) {
+        addEdge(connection.source, connection.target);
+      }
+    },
+    [addEdge]
+  );
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, redo]);
+
   return (
     <div style={{ width: "100vw", height: "100vh", background: "var(--canvas-bg)" }}>
       <ReactFlow
@@ -136,6 +165,7 @@ function EditorCanvas() {
         onEdgesChange={handleEdgesChange}
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
+        onConnect={handleConnect}
         onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
