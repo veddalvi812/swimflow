@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { loadDiagram, type SavedDiagram } from "@/lib/cloud";
+import { loadBoard } from "@/lib/cloud";
 import { useDiagramStore } from "@/store/diagram-store";
 
 const Editor = dynamic(() => import("@/components/canvas/Editor"), { ssr: false });
@@ -16,9 +16,9 @@ export default function ViewPage() {
 
   useEffect(() => {
     if (!id) return;
-    loadDiagram(id).then((d) => {
-      if (d) {
-        setDiagram(d.diagram);
+    loadBoard(id).then((b) => {
+      if (b) {
+        setDiagram(b.content);
         setStatus("found");
       } else {
         setStatus("error");
@@ -29,7 +29,7 @@ export default function ViewPage() {
   if (status === "loading") {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--background)]">
-        <p className="text-sm text-[var(--muted-foreground)]">Loading diagram...</p>
+        <p className="text-sm text-[var(--muted-foreground)]">Loading board...</p>
       </div>
     );
   }
@@ -37,7 +37,7 @@ export default function ViewPage() {
   if (status === "error") {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[var(--background)]">
-        <p className="text-sm text-[var(--muted-foreground)]">Diagram not found or not public.</p>
+        <p className="text-sm text-[var(--muted-foreground)]">Board not found or not public.</p>
         <Link href="/" className="text-sm text-[#3b82f6] hover:underline">Go home</Link>
       </div>
     );

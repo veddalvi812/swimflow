@@ -24,12 +24,17 @@ export default function LandingPage() {
             </svg>
             SwimFlow
           </Link>
-          <Link
-            href="/editor"
-            className="rounded-full bg-[#1a1a1a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-black"
-          >
-            Open Editor
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/login" className="text-sm font-medium text-[#52525b] hover:text-[#1a1a1a]">
+              Log in
+            </Link>
+            <Link
+              href="/editor"
+              className="rounded-full bg-[#1a1a1a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-black"
+            >
+              Open Editor
+            </Link>
+          </div>
         </div>
       </nav>
 

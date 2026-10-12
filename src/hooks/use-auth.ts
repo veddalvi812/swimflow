@@ -32,7 +32,7 @@ export function useAuth() {
     if (!supabase) return;
     await supabase.auth.signInWithOAuth({
       provider: "github",
-      options: { redirectTo: window.location.origin + "/editor" },
+      options: { redirectTo: window.location.origin + "/dashboard" },
     });
   }, []);
 
@@ -40,7 +40,7 @@ export function useAuth() {
     if (!supabase) return;
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin + "/editor" },
+      options: { redirectTo: window.location.origin + "/dashboard" },
     });
   }, []);
 

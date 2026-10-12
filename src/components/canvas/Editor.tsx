@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   ReactFlow,
   Background,
@@ -28,7 +29,6 @@ import { LaneNode } from "./nodes/LaneNode";
 import { Toolbar } from "./Toolbar";
 import { PromptBar } from "./PromptBar";
 import { PropertiesPanel } from "./PropertiesPanel";
-import { CloudPanel } from "./CloudPanel";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const nodeTypes = {
@@ -42,7 +42,7 @@ const nodeTypes = {
   lane: LaneNode,
 };
 
-function EditorCanvas() {
+function EditorCanvas({ backHref }: { backHref: string }) {
   const storeNodes = useDiagramStore((s) => s.nodes);
   const storeEdges = useDiagramStore((s) => s.edges);
   const selectNode = useDiagramStore((s) => s.selectNode);
@@ -130,7 +130,7 @@ function EditorCanvas() {
     setEditingNode(null);
   }, [selectNode, setEditingNode]);
 
-  const [showCloud, setShowCloud] = useState(false);
+  const router = useRouter();
 
   const addEdgeAction = useDiagramStore((s) => s.addEdge);
   const deleteNode = useDiagramStore((s) => s.deleteNode);
@@ -204,7 +204,7 @@ function EditorCanvas() {
 
         <Panel position="top-left" className="pointer-events-auto">
           <Link
-            href="/"
+            href={backHref}
             className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface)]"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="5" rx="1.5" fill="#60a5fa" /><rect x="3" y="10" width="18" height="5" rx="1.5" fill="#60a5fa" opacity="0.6" /><rect x="3" y="17" width="18" height="4" rx="1.5" fill="#60a5fa" opacity="0.3" /></svg>
@@ -213,15 +213,11 @@ function EditorCanvas() {
         </Panel>
 
         <Panel position="top-center" className="pointer-events-none">
-          <Toolbar onCloud={() => setShowCloud((v) => !v)} />
+          <Toolbar onCloud={() => router.push("/dashboard")} />
         </Panel>
 
         <Panel position="top-right" className="pointer-events-none mt-14">
-          {showCloud ? (
-            <CloudPanel onClose={() => setShowCloud(false)} />
-          ) : (
-            <PropertiesPanel />
-          )}
+          <PropertiesPanel />
         </Panel>
 
         <Panel position="bottom-center" className="pointer-events-none mb-4 flex w-full justify-center px-4">
@@ -232,11 +228,11 @@ function EditorCanvas() {
   );
 }
 
-export default function Editor() {
+export default function Editor({ backHref = "/" }: { backHref?: string }) {
   return (
     <TooltipProvider delay={300}>
       <ReactFlowProvider>
-        <EditorCanvas />
+        <EditorCanvas backHref={backHref} />
       </ReactFlowProvider>
     </TooltipProvider>
   );

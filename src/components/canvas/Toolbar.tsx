@@ -404,7 +404,7 @@ export function Toolbar({ onCloud }: { onCloud?: () => void }) {
 
       <div className="mx-1 h-5 w-px bg-[var(--border)]" />
 
-      <ToolbarBtn icon={Cloud} label="Cloud Save" onClick={onCloud ?? (() => {})} />
+      <ToolbarBtn icon={Cloud} label="My boards" onClick={onCloud ?? (() => {})} />
     </div>
   );
 }
