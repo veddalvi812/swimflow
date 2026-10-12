@@ -287,3 +287,74 @@ export function TimelineNode({ id, data, selected }: NodeProps) {
     </div>
   );
 }
+
+export function TableNode({ id, data, selected }: NodeProps) {
+  const d = data as { title: string; headers: string[]; rows: string[][] };
+  const update = useFreeStore((s) => s.update);
+  const setHeader = (c: number, v: string) => update(id, { headers: d.headers.map((h, i) => (i === c ? v : h)) });
+  const setCell = (r: number, c: number, v: string) =>
+    update(id, { rows: d.rows.map((row, i) => (i === r ? d.headers.map((_, j) => (j === c ? v : row[j] ?? "")) : row)) });
+  const addCol = () => update(id, { headers: [...d.headers, "Column"], rows: d.rows.map((r) => [...r, ""]) });
+  const delCol = (c: number) =>
+    update(id, { headers: d.headers.filter((_, i) => i !== c), rows: d.rows.map((r) => r.filter((_, i) => i !== c)) });
+  const addRow = () => update(id, { rows: [...d.rows, d.headers.map(() => "")] });
+  const delRow = (r: number) => update(id, { rows: d.rows.filter((_, i) => i !== r) });
+  const hoverX = "hidden text-[#a1a1aa] hover:text-[#dc2626]";
+
+  return (
+    <div className={`rounded-xl border border-[#e4e4e7] bg-white shadow-sm ${ring(selected)}`}>
+      <div className="border-b border-[#e4e4e7] px-4 py-2.5 text-[14px] font-medium text-[#1a1a1a]">
+        <InlineEdit single value={d.title} onCommit={(title) => update(id, { title })} />
+      </div>
+      <div className="nodrag p-3">
+        <div className="flex items-start gap-2">
+          <table className="border-collapse text-[13px] text-[#1a1a1a]">
+            <thead>
+              <tr>
+                {d.headers.map((h, c) => (
+                  <th key={c} className="group relative w-36 border border-[#e4e4e7] bg-[#f4f4f5] px-2 py-1.5 text-left font-medium">
+                    <InlineEdit single value={h} onCommit={(v) => setHeader(c, v)} />
+                    {d.headers.length > 1 && (
+                      <button aria-label="Delete column" onClick={() => delCol(c)} className={`${hoverX} absolute right-1 top-1.5 group-hover:block`}>
+                        <X className="size-3.5" />
+                      </button>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {d.rows.map((row, r) => (
+                <tr key={r} className="group">
+                  {d.headers.map((_, c) => (
+                    <td key={c} className="border border-[#e4e4e7] px-2 py-1.5">
+                      <InlineEdit single value={row[c] ?? ""} onCommit={(v) => setCell(r, c, v)} />
+                    </td>
+                  ))}
+                  <td className="w-6 pl-1">
+                    <button aria-label="Delete row" onClick={() => delRow(r)} className={`${hoverX} group-hover:block`}>
+                      <X className="size-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button
+            onClick={addCol}
+            className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[12px] text-[#71717a] hover:bg-[#f4f4f5]"
+          >
+            <Plus className="size-3.5" /> Column
+          </button>
+        </div>
+        <button
+          onClick={addRow}
+          className="mt-2 flex items-center gap-1 rounded-md px-2 py-1.5 text-[12px] text-[#71717a] hover:bg-[#f4f4f5]"
+        >
+          <Plus className="size-3.5" /> Row
+        </button>
+      </div>
+      <FreeHandles />
+    </div>
+  );
+}

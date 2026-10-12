@@ -16,7 +16,7 @@ const str = (v: unknown, d = "") => (typeof v === "string" ? v : d);
 const arr = (v: unknown): Json[] => (Array.isArray(v) ? (v as Json[]) : []);
 
 // Smart blocks that take AI-generated JSON: prompt, the list key, and a normalizer for pasted data.
-const BLOCKS: Record<string, { label: string; prompt: string; key: string; replace: string; normalize: (p: Json) => unknown[] }> = {
+const BLOCKS: Record<string, { label: string; prompt: string; key: string; replace: string; normalize: (p: Json) => Json }> = {
   kanban: {
     label: "Kanban board",
     key: "columns",
@@ -31,12 +31,13 @@ Return only this structure:
       "cards": [ { "id": "c1", "text": "..." } ] }
   ]
 }`,
-    normalize: (p): KanbanCol[] =>
-      arr(p.columns).map((c) => ({
+    normalize: (p) => ({
+      columns: arr(p.columns).map((c): KanbanCol => ({
         id: str(c.id, uid()),
         title: str(c.title, "Column"),
         cards: arr(c.cards).map((k) => ({ id: str(k.id, uid()), text: str(k.text) })),
       })),
+    }),
   },
   timeline: {
     label: "Timeline",
@@ -51,8 +52,31 @@ Return only this structure, in chronological order:
     { "id": "t1", "date": "Jan 2025", "text": "..." }
   ]
 }`,
-    normalize: (p) =>
-      arr(p.items).map((i) => ({ id: str(i.id, uid()), date: str(i.date), text: str(i.text) })),
+    normalize: (p) => ({
+      items: arr(p.items).map((i) => ({ id: str(i.id, uid()), date: str(i.date), text: str(i.text) })),
+    }),
+  },
+  table: {
+    label: "Table",
+    key: "rows",
+    replace: "Replace table",
+    prompt: `Generate a table as JSON for: "{describe what it should contain}"
+
+Return only this structure:
+{
+  "title": "...",
+  "headers": ["Column A", "Column B"],
+  "rows": [
+    ["cell", "cell"]
+  ]
+}`,
+    normalize: (p) => {
+      const headers = (Array.isArray(p.headers) ? p.headers : []).map((h) => str(h));
+      const rows = (Array.isArray(p.rows) ? (p.rows as unknown[][]) : []).map((r) =>
+        headers.map((_, i) => str(Array.isArray(r) ? r[i] : "")),
+      );
+      return { headers: headers.length ? headers : ["Column"], rows };
+    },
   },
 };
 
@@ -71,7 +95,7 @@ function BlockProperties({ id, kind }: { id: string; kind: string }) {
       const raw = paste.trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
       const p = JSON.parse(raw);
       if (!Array.isArray(p[cfg.key])) throw new Error(`Needs a ${cfg.key} array`);
-      update(id, { [cfg.key]: cfg.normalize(p), ...(p.title ? { title: p.title } : {}) });
+      update(id, { ...cfg.normalize(p), ...(p.title ? { title: p.title } : {}) });
       setPaste("");
       setErr("");
     } catch (e) {
