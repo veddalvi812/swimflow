@@ -183,6 +183,10 @@ body {
   opacity: 1;
   transform: scale(1.4);
 }
+.readonly .react-flow__node,
+.readonly .react-flow__edge {
+  pointer-events: none !important;
+}
 .tool-armed .react-flow__pane,
 .tool-armed .react-flow__node {
   cursor: crosshair !important;

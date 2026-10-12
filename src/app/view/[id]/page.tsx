@@ -46,5 +46,5 @@ export default function ViewPage() {
     );
   }
 
-  return <Editor />;
+  return <Editor readOnly />;
 }

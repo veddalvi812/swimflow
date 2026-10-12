@@ -3,16 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Folder, Home, Link2, LogOut, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { Folder, Home, Link2, Users, LogOut, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import {
-  createBoard, createProject, deleteBoard, deleteProject, listBoards, listProjects, updateBoard,
+  createBoard, createProject, deleteBoard, deleteProject, listBoards, listProjects, listShared, updateBoard,
   type BoardMeta, type Project,
 } from "@/lib/cloud";
 import { SAMPLE_DIAGRAM, LANE_COLORS } from "@/lib/constants";
 import type { SwimlaneDiagram } from "@/types/diagram";
 
-type View = "home" | "starred" | string; // string = project id
+type View = "home" | "starred" | "shared" | string; // string = project id
 
 const BLANK: SwimlaneDiagram = {
   title: "Untitled board",
@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [boards, setBoards] = useState<BoardMeta[]>([]);
+  const [shared, setShared] = useState<BoardMeta[]>([]);
   const [view, setView] = useState<View>("home");
   const [ready, setReady] = useState(false);
 
@@ -38,6 +39,7 @@ export default function DashboardPage() {
     }
     setProjects(ps);
     setBoards(await listBoards());
+    setShared(await listShared());
     setReady(true);
   }, []);
 
@@ -50,8 +52,8 @@ export default function DashboardPage() {
   }
 
   const projectId = projects.some((p) => p.id === view) ? view : projects[0]?.id;
-  const shown = boards.filter((b) => view === "home" || (view === "starred" ? b.starred : b.project_id === view));
-  const title = view === "home" ? "All boards" : view === "starred" ? "Starred" : projects.find((p) => p.id === view)?.name;
+  const shown = view === "shared" ? shared : boards.filter((b) => view === "home" || (view === "starred" ? b.starred : b.project_id === view));
+  const title = view === "shared" ? "Shared with me" : view === "home" ? "All boards" : view === "starred" ? "Starred" : projects.find((p) => p.id === view)?.name;
 
   const newBoard = async (content: SwimlaneDiagram) => {
     if (!projectId) return;
@@ -96,6 +98,7 @@ export default function DashboardPage() {
         <Link href="/" className="px-3 py-2 text-[15px] font-medium">SwimFlow</Link>
         <button onClick={() => setView("home")} className={navBtn(view === "home")}><Home className="size-4" /> Home</button>
         <button onClick={() => setView("starred")} className={navBtn(view === "starred")}><Star className="size-4" /> Starred</button>
+        <button onClick={() => setView("shared")} className={navBtn(view === "shared")}><Users className="size-4" /> Shared with me</button>
 
         <div className="mt-4 flex items-center justify-between px-3 text-xs font-medium text-[#71717a]">
           Projects
@@ -142,8 +145,10 @@ export default function DashboardPage() {
 
         {shown.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[#d4d4d8] py-20 text-center">
-            <p className="font-medium">Start your first board</p>
-            <p className="mt-1 text-sm text-[#71717a]">Create a blank board or start from a sample process.</p>
+            <p className="font-medium">{view === "shared" ? "Nothing shared with you yet" : "Start your first board"}</p>
+            <p className="mt-1 text-sm text-[#71717a]">
+              {view === "shared" ? "Boards other people invite you to will show up here." : "Create a blank board or start from a sample process."}
+            </p>
           </div>
         ) : (
           <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
@@ -160,7 +165,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-[#a1a1aa]">Edited {new Date(b.updated_at).toLocaleDateString()}</p>
                   </div>
                 </Link>
-                <div className="flex items-center gap-3 px-4 pb-3 pt-2 text-[#a1a1aa]">
+                <div className={`flex items-center gap-3 px-4 pb-3 pt-2 text-[#a1a1aa] ${view === "shared" ? "hidden" : ""}`}>
                   <button onClick={() => patch(b.id, { starred: !b.starred })} aria-label="Star" className="hover:text-[#f59e0b]">
                     <Star className={`size-4 ${b.starred ? "fill-[#f59e0b] text-[#f59e0b]" : ""}`} />
                   </button>

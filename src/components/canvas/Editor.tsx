@@ -57,7 +57,7 @@ const nodeTypes = {
   table: TableNode,
 };
 
-function EditorCanvas({ backHref }: { backHref: string }) {
+function EditorCanvas({ backHref, readOnly }: { backHref: string; readOnly: boolean }) {
   const storeNodes = useDiagramStore((s) => s.nodes);
   const storeEdges = useDiagramStore((s) => s.edges);
   const selectNode = useDiagramStore((s) => s.selectNode);
@@ -196,6 +196,7 @@ function EditorCanvas({ backHref }: { backHref: string }) {
   );
 
   useEffect(() => {
+    if (readOnly) return;
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -224,14 +225,18 @@ function EditorCanvas({ backHref }: { backHref: string }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [deleteNode, deleteEdge]);
+  }, [deleteNode, deleteEdge, readOnly]);
 
   return (
-    <div className={tool ? "tool-armed" : ""} style={{ width: "100vw", height: "100vh", background: "var(--background)" }}>
+    <div className={`${tool ? "tool-armed" : ""} ${readOnly ? "readonly" : ""}`} style={{ width: "100vw", height: "100vh", background: "var(--background)" }}>
       <ReactFlow
         nodes={allNodes}
         edges={allEdges}
         connectionMode={ConnectionMode.Loose}
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        elementsSelectable={!readOnly}
+        deleteKeyCode={readOnly ? null : "Backspace"}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onNodeClick={handleNodeClick}
@@ -268,31 +273,41 @@ function EditorCanvas({ backHref }: { backHref: string }) {
           </Link>
         </Panel>
 
-        <Panel position="top-center" className="pointer-events-none">
-          <Toolbar onCloud={() => router.push("/dashboard")} />
-        </Panel>
+        {readOnly ? (
+          <Panel position="top-center" className="pointer-events-none">
+            <span className="rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-1 text-xs text-[var(--muted-foreground)] shadow-sm">
+              View only
+            </span>
+          </Panel>
+        ) : (
+          <>
+            <Panel position="top-center" className="pointer-events-none">
+              <Toolbar onCloud={() => router.push("/dashboard")} />
+            </Panel>
 
-        <Panel position="top-right" className="pointer-events-none mt-14">
-          <RightPanel />
-        </Panel>
+            <Panel position="top-right" className="pointer-events-none mt-14">
+              <RightPanel />
+            </Panel>
 
-        <Panel position="center-left" className="pointer-events-none">
-          <ToolRail />
-        </Panel>
+            <Panel position="center-left" className="pointer-events-none">
+              <ToolRail />
+            </Panel>
 
-        <Panel position="bottom-center" className="pointer-events-none mb-4 flex w-full justify-center px-4">
-          <PromptBar />
-        </Panel>
+            <Panel position="bottom-center" className="pointer-events-none mb-4 flex w-full justify-center px-4">
+              <PromptBar />
+            </Panel>
+          </>
+        )}
       </ReactFlow>
     </div>
   );
 }
 
-export default function Editor({ backHref = "/" }: { backHref?: string }) {
+export default function Editor({ backHref = "/", readOnly = false }: { backHref?: string; readOnly?: boolean }) {
   return (
     <TooltipProvider delay={300}>
       <ReactFlowProvider>
-        <EditorCanvas backHref={backHref} />
+        <EditorCanvas backHref={backHref} readOnly={readOnly} />
       </ReactFlowProvider>
     </TooltipProvider>
   );
