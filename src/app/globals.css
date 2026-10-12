@@ -57,9 +57,9 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --background: #0a0a0b;
-    --foreground: #fafafa;
+    --foreground: #f2efe9;
     --surface: #18181b;
-    --surface-raised: #27272a;
+    --surface-raised: #1c1c1f;
     --muted: #a1a1aa;
     --border: #27272a;
     --canvas-bg: #111113;
@@ -69,9 +69,9 @@
 
 :root[data-theme="dark"] {
   --background: #0a0a0b;
-  --foreground: #fafafa;
+  --foreground: #f2efe9;
   --surface: #18181b;
-  --surface-raised: #27272a;
+  --surface-raised: #1c1c1f;
   --muted: #a1a1aa;
   --border: #27272a;
   --canvas-bg: #111113;
