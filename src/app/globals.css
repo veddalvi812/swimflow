@@ -170,3 +170,17 @@ body {
     @apply font-sans;
   }
 }
+
+.react-flow__handle {
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.react-flow__node:hover .react-flow__handle,
+.react-flow__handle:hover,
+.react-flow__handle.connecting {
+  opacity: 1;
+  transform: scale(1.4);
+}
+.react-flow__handle:hover {
+  background: #3b82f6 !important;
+}

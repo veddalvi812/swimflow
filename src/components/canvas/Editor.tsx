@@ -18,6 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
+import Link from "next/link";
 import { useDiagramStore } from "@/store/diagram-store";
 import { ProcessNode } from "./nodes/ProcessNode";
 import { DecisionNode } from "./nodes/DecisionNode";
@@ -128,21 +129,26 @@ function EditorCanvas() {
     setEditingNode(null);
   }, [selectNode, setEditingNode]);
 
-  const addEdge = useDiagramStore((s) => s.addEdge);
+  const addEdgeAction = useDiagramStore((s) => s.addEdge);
+  const deleteNode = useDiagramStore((s) => s.deleteNode);
+  const deleteEdge = useDiagramStore((s) => s.deleteEdge);
   const undo = useDiagramStore((s) => s.undo);
   const redo = useDiagramStore((s) => s.redo);
 
   const handleConnect: OnConnect = useCallback(
     (connection) => {
       if (connection.source && connection.target) {
-        addEdge(connection.source, connection.target);
+        addEdgeAction(connection.source, connection.target);
       }
     },
-    [addEdge]
+    [addEdgeAction]
   );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -151,10 +157,16 @@ function EditorCanvas() {
         e.preventDefault();
         redo();
       }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const { selectedNodeId, selectedEdgeId, editingNodeId } = useDiagramStore.getState();
+        if (editingNodeId) return;
+        if (selectedNodeId) { e.preventDefault(); deleteNode(selectedNodeId); }
+        else if (selectedEdgeId) { e.preventDefault(); deleteEdge(selectedEdgeId); }
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo]);
+  }, [undo, redo, deleteNode, deleteEdge]);
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "var(--canvas-bg)" }}>
@@ -186,6 +198,16 @@ function EditorCanvas() {
           maskColor="rgba(0,0,0,0.1)"
           nodeStrokeWidth={2}
         />
+
+        <Panel position="top-left" className="pointer-events-auto">
+          <Link
+            href="/"
+            className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface)]"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="5" rx="1.5" fill="#60a5fa" /><rect x="3" y="10" width="18" height="5" rx="1.5" fill="#60a5fa" opacity="0.6" /><rect x="3" y="17" width="18" height="4" rx="1.5" fill="#60a5fa" opacity="0.3" /></svg>
+            SwimFlow
+          </Link>
+        </Panel>
 
         <Panel position="top-center" className="pointer-events-none">
           <Toolbar />

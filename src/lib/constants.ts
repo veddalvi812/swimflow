@@ -1,12 +1,12 @@
 export const LANE_COLORS = [
-  "#dbeafe", // blue
-  "#dcfce7", // green
-  "#fef3c7", // amber
-  "#ffe4e6", // rose
-  "#f3e8ff", // purple
-  "#cffafe", // cyan
-  "#ffedd5", // orange
-  "#f1f5f9", // slate
+  "#3b82f6", // blue
+  "#22c55e", // green
+  "#f59e0b", // amber
+  "#ef4444", // rose
+  "#a855f7", // purple
+  "#06b6d4", // cyan
+  "#f97316", // orange
+  "#64748b", // slate
 ];
 
 export const LANE_HEADER_WIDTH = 160;

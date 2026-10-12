@@ -16,19 +16,17 @@ export function LaneNode({ data }: NodeProps) {
       className="pointer-events-none"
       style={{ width: laneWidth, height: laneHeight, position: "relative" }}
     >
-      {/* Lane body */}
       <div
         className="absolute inset-0"
-        style={{ backgroundColor: color, opacity: 0.3 }}
+        style={{ backgroundColor: color, opacity: 0.06 }}
       />
-      {/* Lane header */}
       <div
         className="absolute left-0 top-0 flex items-center justify-center border-r border-[var(--border)]"
         style={{
           width: LANE_HEADER_WIDTH,
           height: laneHeight,
           backgroundColor: color,
-          opacity: 0.55,
+          opacity: 0.12,
         }}
       />
       <div
