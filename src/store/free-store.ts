@@ -14,7 +14,15 @@ import {
 // Free-form canvas objects (stickies, text, shapes, frames) that live beside the swimlane diagram.
 // ponytail: no undo/redo for these yet; Ctrl+Z only covers the swimlane. Add a history stack when needed.
 
-export type Tool = "sticky" | "text" | "rect" | "ellipse" | "diamond" | "frame";
+export type Tool = "sticky" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "kanban";
+
+export interface KanbanCol {
+  id: string;
+  title: string;
+  cards: { id: string; text: string }[];
+}
+
+export const uid = () => Math.random().toString(36).slice(2, 9);
 
 export const STICKY_COLORS = ["#fef08a", "#bbf7d0", "#bfdbfe", "#fecaca", "#e9d5ff"];
 
@@ -25,6 +33,17 @@ const DEFAULTS: Record<Tool, { type: string; data: Record<string, unknown>; w?: 
   ellipse: { type: "shape", data: { text: "", shape: "ellipse", color: "#ffffff" }, w: 140, h: 80 },
   diamond: { type: "shape", data: { text: "", shape: "diamond", color: "#ffffff" }, w: 140, h: 100 },
   frame: { type: "frame", data: { text: "Frame" }, w: 400, h: 300 },
+  kanban: {
+    type: "kanban",
+    data: {
+      title: "Kanban board",
+      columns: [
+        { id: "col-todo", title: "To do", cards: [{ id: "c-1", text: "First task" }] },
+        { id: "col-doing", title: "In progress", cards: [] },
+        { id: "col-done", title: "Done", cards: [] },
+      ],
+    },
+  },
 };
 
 export const isFreeId = (id: string) => id.startsWith("f-");

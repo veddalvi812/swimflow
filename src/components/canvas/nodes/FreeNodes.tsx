@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
-import { useFreeStore } from "@/store/free-store";
+import { Plus, X } from "lucide-react";
+import { useFreeStore, uid, type KanbanCol } from "@/store/free-store";
 
 const SIDES = [
   ["t", Position.Top],
@@ -17,30 +18,42 @@ function FreeHandles() {
   ));
 }
 
-function EditableText({ id, text, className = "" }: { id: string; text: string; className?: string }) {
+function InlineEdit({
+  value, onCommit, className = "", single = false,
+}: { value: string; onCommit: (v: string) => void; className?: string; single?: boolean }) {
   const [editing, setEditing] = useState(false);
-  const update = useFreeStore((s) => s.update);
 
   if (editing) {
     return (
       <textarea
         autoFocus
-        defaultValue={text}
+        defaultValue={value}
+        rows={single ? 1 : undefined}
         onFocus={(e) => e.currentTarget.select()}
         onBlur={(e) => {
-          update(id, { text: e.target.value });
+          onCommit(e.target.value);
           setEditing(false);
         }}
-        onKeyDown={(e) => e.key === "Escape" && e.currentTarget.blur()}
-        className={`nodrag nowheel h-full w-full resize-none bg-transparent outline-none ${className}`}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || (single && e.key === "Enter")) {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+        className={`nodrag nowheel w-full resize-none bg-transparent outline-none ${single ? "" : "h-full"} ${className}`}
       />
     );
   }
   return (
     <div onDoubleClick={() => setEditing(true)} className={`w-full whitespace-pre-wrap break-words ${className}`}>
-      {text || " "}
+      {value || " "}
     </div>
   );
+}
+
+function EditableText({ id, text, className = "" }: { id: string; text: string; className?: string }) {
+  const update = useFreeStore((s) => s.update);
+  return <InlineEdit value={text} onCommit={(v) => update(id, { text: v })} className={className} />;
 }
 
 const ring = (selected?: boolean) => (selected ? "outline outline-2 outline-offset-2 outline-[#3b82f6]" : "");
@@ -107,6 +120,104 @@ export function FrameNode({ id, data, selected }: NodeProps) {
       <div className="absolute -top-6 left-0 max-w-full text-[12px] font-medium text-[#71717a]">
         <EditableText id={id} text={d.text} />
       </div>
+    </div>
+  );
+}
+
+export function KanbanNode({ id, data, selected }: NodeProps) {
+  const d = data as { title: string; columns: KanbanCol[] };
+  const update = useFreeStore((s) => s.update);
+  const setCols = (columns: KanbanCol[]) => update(id, { columns });
+  const patchCol = (cid: string, fn: (c: KanbanCol) => KanbanCol) =>
+    setCols(d.columns.map((c) => (c.id === cid ? fn(c) : c)));
+
+  // Drag payload is "fromColumn|cardId"; ignored if it didn't come from this board.
+  const move = (raw: string, toCol: string, before?: string) => {
+    const [fromCol, cardId] = raw.split("|");
+    const card = d.columns.find((c) => c.id === fromCol)?.cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const stripped = d.columns.map((c) => ({ ...c, cards: c.cards.filter((x) => x.id !== cardId) }));
+    setCols(
+      stripped.map((c) => {
+        if (c.id !== toCol) return c;
+        const i = before ? c.cards.findIndex((x) => x.id === before) : -1;
+        const cards = [...c.cards];
+        cards.splice(i < 0 ? cards.length : i, 0, card);
+        return { ...c, cards };
+      })
+    );
+  };
+
+  return (
+    <div className={`rounded-xl border border-[#e4e4e7] bg-white shadow-sm ${ring(selected)}`}>
+      <div className="border-b border-[#e4e4e7] px-4 py-2.5 text-[14px] font-medium text-[#1a1a1a]">
+        <InlineEdit single value={d.title} onCommit={(title) => update(id, { title })} />
+      </div>
+      <div className="nodrag flex items-start gap-3 p-3">
+        {d.columns.map((col) => (
+          <div
+            key={col.id}
+            className="w-56 shrink-0 rounded-lg bg-[#f4f4f5] p-2"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => move(e.dataTransfer.getData("text/plain"), col.id)}
+          >
+            <div className="group flex items-center gap-1.5 px-1 pb-2 text-[12px] font-medium text-[#52525b]">
+              <InlineEdit single value={col.title} onCommit={(title) => patchCol(col.id, (c) => ({ ...c, title }))} />
+              <span className="text-[#a1a1aa]">{col.cards.length}</span>
+              <button
+                aria-label="Delete column"
+                onClick={() => setCols(d.columns.filter((c) => c.id !== col.id))}
+                className="hidden text-[#a1a1aa] hover:text-[#dc2626] group-hover:block"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {col.cards.map((card) => (
+                <div
+                  key={card.id}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData("text/plain", `${col.id}|${card.id}`)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    move(e.dataTransfer.getData("text/plain"), col.id, card.id);
+                  }}
+                  className="group/card relative cursor-grab rounded-md border border-[#e4e4e7] bg-white px-2.5 py-2 text-[13px] text-[#1a1a1a] shadow-sm"
+                >
+                  <InlineEdit
+                    single
+                    value={card.text}
+                    onCommit={(text) =>
+                      patchCol(col.id, (c) => ({ ...c, cards: c.cards.map((x) => (x.id === card.id ? { ...x, text } : x)) }))
+                    }
+                  />
+                  <button
+                    aria-label="Delete card"
+                    onClick={() => patchCol(col.id, (c) => ({ ...c, cards: c.cards.filter((x) => x.id !== card.id) }))}
+                    className="absolute right-1 top-1 hidden text-[#a1a1aa] hover:text-[#dc2626] group-hover/card:block"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => patchCol(col.id, (c) => ({ ...c, cards: [...c.cards, { id: uid(), text: "New card" }] }))}
+              className="mt-2 flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-[12px] text-[#71717a] hover:bg-[#e4e4e7]"
+            >
+              <Plus className="size-3.5" /> Add card
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => setCols([...d.columns, { id: uid(), title: "New column", cards: [] }])}
+          className="flex w-40 shrink-0 items-center gap-1 rounded-lg border border-dashed border-[#d4d4d8] px-3 py-2 text-[12px] text-[#71717a] hover:bg-[#f4f4f5]"
+        >
+          <Plus className="size-3.5" /> Add column
+        </button>
+      </div>
+      <FreeHandles />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Circle, Diamond, Frame, MousePointer2, Square, StickyNote, Type, type LucideIcon } from "lucide-react";
+import { Circle, Columns3, Diamond, Frame, MousePointer2, Square, StickyNote, Type, type LucideIcon } from "lucide-react";
 import { useFreeStore, type Tool } from "@/store/free-store";
 
 const TOOLS: { tool: Tool | null; label: string; icon: LucideIcon }[] = [
@@ -11,6 +11,7 @@ const TOOLS: { tool: Tool | null; label: string; icon: LucideIcon }[] = [
   { tool: "ellipse", label: "Ellipse", icon: Circle },
   { tool: "diamond", label: "Diamond", icon: Diamond },
   { tool: "frame", label: "Frame", icon: Frame },
+  { tool: "kanban", label: "Kanban board", icon: Columns3 },
 ];
 
 export function ToolRail() {
