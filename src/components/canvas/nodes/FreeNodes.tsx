@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
-import { Plus, X } from "lucide-react";
-import { useFreeStore, uid, type KanbanCol } from "@/store/free-store";
+import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { useFreeStore, uid, type KanbanCol, type TimelineItem } from "@/store/free-store";
 
 const SIDES = [
   ["t", Position.Top],
@@ -215,6 +215,72 @@ export function KanbanNode({ id, data, selected }: NodeProps) {
           className="flex w-40 shrink-0 items-center gap-1 rounded-lg border border-dashed border-[#d4d4d8] px-3 py-2 text-[12px] text-[#71717a] hover:bg-[#f4f4f5]"
         >
           <Plus className="size-3.5" /> Add column
+        </button>
+      </div>
+      <FreeHandles />
+    </div>
+  );
+}
+
+export function TimelineNode({ id, data, selected }: NodeProps) {
+  const d = data as { title: string; items: TimelineItem[] };
+  const update = useFreeStore((s) => s.update);
+  const setItems = (items: TimelineItem[]) => update(id, { items });
+  const patch = (iid: string, p: Partial<TimelineItem>) =>
+    setItems(d.items.map((i) => (i.id === iid ? { ...i, ...p } : i)));
+  const shift = (idx: number, by: number) => {
+    const items = [...d.items];
+    [items[idx], items[idx + by]] = [items[idx + by], items[idx]];
+    setItems(items);
+  };
+
+  return (
+    <div className={`rounded-xl border border-[#e4e4e7] bg-white shadow-sm ${ring(selected)}`}>
+      <div className="border-b border-[#e4e4e7] px-4 py-2.5 text-[14px] font-medium text-[#1a1a1a]">
+        <InlineEdit single value={d.title} onCommit={(title) => update(id, { title })} />
+      </div>
+      <div className="nodrag flex items-start px-3 py-4">
+        {d.items.map((item, idx) => (
+          <div key={item.id} className="group relative w-40 shrink-0 px-2">
+            <div className="mb-2 text-center text-[12px] font-medium text-[#3b82f6]">
+              <InlineEdit single value={item.date} onCommit={(date) => patch(item.id, { date })} className="text-center" />
+            </div>
+            <div className="relative h-3">
+              <div
+                className="absolute top-1/2 h-px -translate-y-1/2 bg-[#d4d4d8]"
+                style={{ left: idx === 0 ? "50%" : "-0.5rem", right: idx === d.items.length - 1 ? "50%" : "-0.5rem" }}
+              />
+              <div className="absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#3b82f6] bg-white" />
+            </div>
+            <div className="relative mt-2 rounded-md border border-[#e4e4e7] bg-[#fafafa] px-2.5 py-2 text-center text-[13px] text-[#1a1a1a]">
+              <InlineEdit value={item.text} onCommit={(text) => patch(item.id, { text })} className="text-center" />
+              <div className="absolute -top-2 right-1 hidden gap-0.5 rounded bg-white shadow-sm ring-1 ring-[#e4e4e7] group-hover:flex">
+                {idx > 0 && (
+                  <button aria-label="Move left" onClick={() => shift(idx, -1)} className="text-[#71717a] hover:text-[#1a1a1a]">
+                    <ChevronLeft className="size-4" />
+                  </button>
+                )}
+                {idx < d.items.length - 1 && (
+                  <button aria-label="Move right" onClick={() => shift(idx, 1)} className="text-[#71717a] hover:text-[#1a1a1a]">
+                    <ChevronRight className="size-4" />
+                  </button>
+                )}
+                <button
+                  aria-label="Delete item"
+                  onClick={() => setItems(d.items.filter((i) => i.id !== item.id))}
+                  className="text-[#a1a1aa] hover:text-[#dc2626]"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+        <button
+          onClick={() => setItems([...d.items, { id: uid(), date: "Date", text: "New milestone" }])}
+          className="ml-2 mt-6 flex shrink-0 items-center gap-1 rounded-lg border border-dashed border-[#d4d4d8] px-3 py-2 text-[12px] text-[#71717a] hover:bg-[#f4f4f5]"
+        >
+          <Plus className="size-3.5" /> Add
         </button>
       </div>
       <FreeHandles />

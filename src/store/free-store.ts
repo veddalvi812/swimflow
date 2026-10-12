@@ -14,12 +14,18 @@ import {
 // Free-form canvas objects (stickies, text, shapes, frames) that live beside the swimlane diagram.
 // ponytail: no undo/redo for these yet; Ctrl+Z only covers the swimlane. Add a history stack when needed.
 
-export type Tool = "sticky" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "kanban";
+export type Tool = "sticky" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "kanban" | "timeline";
 
 export interface KanbanCol {
   id: string;
   title: string;
   cards: { id: string; text: string }[];
+}
+
+export interface TimelineItem {
+  id: string;
+  date: string;
+  text: string;
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 9);
@@ -33,6 +39,17 @@ const DEFAULTS: Record<Tool, { type: string; data: Record<string, unknown>; w?: 
   ellipse: { type: "shape", data: { text: "", shape: "ellipse", color: "#ffffff" }, w: 140, h: 80 },
   diamond: { type: "shape", data: { text: "", shape: "diamond", color: "#ffffff" }, w: 140, h: 100 },
   frame: { type: "frame", data: { text: "Frame" }, w: 400, h: 300 },
+  timeline: {
+    type: "timeline",
+    data: {
+      title: "Timeline",
+      items: [
+        { id: "t-1", date: "Jan", text: "Kickoff" },
+        { id: "t-2", date: "Feb", text: "Build" },
+        { id: "t-3", date: "Mar", text: "Launch" },
+      ],
+    },
+  },
   kanban: {
     type: "kanban",
     data: {

@@ -33,7 +33,7 @@ import { Toolbar } from "./Toolbar";
 import { PromptBar } from "./PromptBar";
 import { RightPanel } from "./RightPanel";
 import { ToolRail } from "./ToolRail";
-import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode } from "./nodes/FreeNodes";
+import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode, TimelineNode } from "./nodes/FreeNodes";
 import { useFreeStore, isFreeId } from "@/store/free-store";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -51,6 +51,7 @@ const nodeTypes = {
   shape: ShapeNode,
   frame: FrameNode,
   kanban: KanbanNode,
+  timeline: TimelineNode,
 };
 
 function EditorCanvas({ backHref }: { backHref: string }) {
