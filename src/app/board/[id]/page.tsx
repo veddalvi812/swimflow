@@ -70,8 +70,11 @@ export default function BoardPage() {
 
   return (
     <>
-      <Editor backHref="/dashboard" readOnly={role === "viewer"} />
-      {role === "owner" && <ShareDialog boardId={id} isPublic={isPublic} />}
+      <Editor
+        backHref="/dashboard"
+        readOnly={role === "viewer"}
+        shareSlot={role === "owner" ? <ShareDialog boardId={id} isPublic={isPublic} /> : undefined}
+      />
       {role !== "viewer" && (
         <span className="pointer-events-none fixed bottom-4 left-4 z-10 rounded-md border border-[#e4e4e7] bg-white px-2.5 py-1 text-xs text-[#71717a]">
           {save === "saving" ? "Saving..." : save === "error" ? "Couldn't save" : "Saved"}

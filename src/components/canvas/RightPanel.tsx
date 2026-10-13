@@ -7,6 +7,7 @@ import { useFreeStore, snapshotOf, STICKY_COLORS, uid, type KanbanCol } from "@/
 import { useReactFlow } from "@xyflow/react";
 import { FLOW_PROMPT, parseFlow } from "@/lib/flowchart";
 import { applyBoardJSON } from "@/lib/board-json";
+import { PromptPanel } from "./PromptPanel";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { Button } from "@/components/ui/button";
 
@@ -275,7 +276,7 @@ function JsonPanel() {
 }
 
 export function RightPanel() {
-  const [tab, setTab] = useState<"props" | "json" | "flow">("props");
+  const [tab, setTab] = useState<"props" | "json" | "ai" | "flow">("props");
   const freeSelected = useFreeStore((s) => s.nodes.find((n) => n.selected));
   const freeSelectedId = freeSelected?.id;
 
@@ -295,9 +296,10 @@ export function RightPanel() {
       <div className="pointer-events-auto flex gap-1 rounded-lg bg-[var(--surface)] p-1">
         {tabBtn("props", "Properties")}
         {tabBtn("json", "JSON")}
+        {tabBtn("ai", "AI")}
         {tabBtn("flow", "Flowchart")}
       </div>
-      {tab === "json" ? <JsonPanel /> : tab === "flow" ? <FlowchartPanel /> : freeSelectedId ? (
+      {tab === "json" ? <JsonPanel /> : tab === "ai" ? <PromptPanel /> : tab === "flow" ? <FlowchartPanel /> : freeSelectedId ? (
         freeSelected?.type && BLOCKS[freeSelected.type] ? <BlockProperties id={freeSelectedId} kind={freeSelected.type} /> : <FreeProperties id={freeSelectedId} />
       ) : <PropertiesPanel />}
     </div>

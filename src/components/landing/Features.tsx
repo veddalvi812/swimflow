@@ -25,8 +25,8 @@ const features = [
     ),
   },
   {
-    title: "PNG export",
-    description: "Export at 2x retina resolution. Canvas2D rendering, no DOM cloning.",
+    title: "PNG and PDF export",
+    description: "Export the whole board as a 2x retina PNG or a one-page PDF.",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <rect x="3" y="3" width="14" height="14" rx="2" stroke="#3b82f6" strokeWidth="1.5" />

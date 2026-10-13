@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, Copy, Share2, Trash2, X } from "lucide-react";
 import { addMember, listMembers, removeMember, updateBoard, type Member } from "@/lib/cloud";
 import { Button } from "@/components/ui/button";
@@ -45,14 +46,12 @@ export function ShareDialog({ boardId, isPublic }: { boardId: string; isPublic: 
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed right-4 top-3 z-10 flex items-center gap-1.5 rounded-full bg-[#1a1a1a] px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-black"
-      >
-        <Share2 className="size-4" /> Share
-      </button>
+      <Button variant="ghost" size="icon" title="Share" aria-label="Share board" onClick={() => setOpen(true)}>
+        <Share2 className="size-4" />
+      </Button>
 
-      {open && (
+      {open &&
+        createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setOpen(false)}>
           <div
             role="dialog"
@@ -137,7 +136,8 @@ export function ShareDialog({ boardId, isPublic }: { boardId: string; isPublic: 
               </ul>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

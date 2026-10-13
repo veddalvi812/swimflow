@@ -9,7 +9,7 @@ import {
   createBoard, createProject, deleteBoard, deleteProject, listBoards, listProjects, listShared, updateBoard,
   type BoardMeta, type Project,
 } from "@/lib/cloud";
-import { SAMPLE_DIAGRAM, LANE_COLORS } from "@/lib/constants";
+import { SAMPLE_DIAGRAM } from "@/lib/constants";
 import type { SwimlaneDiagram } from "@/types/diagram";
 
 type View = "home" | "starred" | "shared" | string; // string = project id
@@ -17,7 +17,7 @@ type View = "home" | "starred" | "shared" | string; // string = project id
 const BLANK: SwimlaneDiagram = {
   title: "Untitled board",
   orientation: "horizontal",
-  lanes: [{ id: "lane-1", label: "Lane 1", color: LANE_COLORS[0] }],
+  lanes: [],
   nodes: [],
   edges: [],
 };

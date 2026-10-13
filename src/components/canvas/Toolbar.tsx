@@ -53,7 +53,7 @@ function ToolbarBtn({
   );
 }
 
-export function Toolbar({ onCloud }: { onCloud?: () => void }) {
+export function Toolbar({ onCloud, extra }: { onCloud?: () => void; extra?: React.ReactNode }) {
   const relayout = useDiagramStore((s) => s.relayout);
   const diagram = useDiagramStore((s) => s.diagram);
   const addNode = useDiagramStore((s) => s.addNode);
@@ -113,6 +113,7 @@ export function Toolbar({ onCloud }: { onCloud?: () => void }) {
       <div className="mx-1 h-5 w-px bg-[var(--border)]" />
 
       <ToolbarBtn icon={Cloud} label="My boards" onClick={onCloud ?? (() => {})} />
+      {extra}
     </div>
   );
 }

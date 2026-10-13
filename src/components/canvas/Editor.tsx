@@ -31,7 +31,6 @@ import { StartEndNode } from "./nodes/StartEndNode";
 import { SubprocessNode } from "./nodes/SubprocessNode";
 import { LaneNode } from "./nodes/LaneNode";
 import { Toolbar } from "./Toolbar";
-import { PromptBar } from "./PromptBar";
 import { RightPanel } from "./RightPanel";
 import { ToolRail } from "./ToolRail";
 import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode, TimelineNode, TableNode } from "./nodes/FreeNodes";
@@ -57,7 +56,7 @@ const nodeTypes = {
   table: TableNode,
 };
 
-function EditorCanvas({ backHref, readOnly }: { backHref: string; readOnly: boolean }) {
+function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; readOnly: boolean; shareSlot?: React.ReactNode }) {
   const storeNodes = useDiagramStore((s) => s.nodes);
   const storeEdges = useDiagramStore((s) => s.edges);
   const selectNode = useDiagramStore((s) => s.selectNode);
@@ -282,7 +281,7 @@ function EditorCanvas({ backHref, readOnly }: { backHref: string; readOnly: bool
         ) : (
           <>
             <Panel position="top-center" className="pointer-events-none">
-              <Toolbar onCloud={() => router.push("/dashboard")} />
+              <Toolbar onCloud={() => router.push("/dashboard")} extra={shareSlot} />
             </Panel>
 
             <Panel position="top-right" className="pointer-events-none mt-14">
@@ -293,9 +292,6 @@ function EditorCanvas({ backHref, readOnly }: { backHref: string; readOnly: bool
               <ToolRail />
             </Panel>
 
-            <Panel position="bottom-center" className="pointer-events-none mb-4 flex w-full justify-center px-4">
-              <PromptBar />
-            </Panel>
           </>
         )}
       </ReactFlow>
@@ -303,11 +299,19 @@ function EditorCanvas({ backHref, readOnly }: { backHref: string; readOnly: bool
   );
 }
 
-export default function Editor({ backHref = "/", readOnly = false }: { backHref?: string; readOnly?: boolean }) {
+export default function Editor({
+  backHref = "/",
+  readOnly = false,
+  shareSlot,
+}: {
+  backHref?: string;
+  readOnly?: boolean;
+  shareSlot?: React.ReactNode;
+}) {
   return (
     <TooltipProvider delay={300}>
       <ReactFlowProvider>
-        <EditorCanvas backHref={backHref} readOnly={readOnly} />
+        <EditorCanvas backHref={backHref} readOnly={readOnly} shareSlot={shareSlot} />
       </ReactFlowProvider>
     </TooltipProvider>
   );
