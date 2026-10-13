@@ -76,6 +76,12 @@ const DEFAULTS: Record<Exclude<Tool, "flowchart">, { type: string; data: Record<
   },
 };
 
+// Who is placing objects; stickies show it. Set from the signed-in user, empty for guests.
+let author = "";
+export const setAuthor = (name: string) => {
+  author = name;
+};
+
 export const isFreeId = (id: string) => id.startsWith("f-");
 
 let seq = 0;
@@ -113,6 +119,8 @@ interface FreeStore {
   applyEdgeChanges: (c: EdgeChange[]) => void;
   update: (id: string, patch: Record<string, unknown>) => void;
   connect: (c: Connection) => void;
+  remove: (id: string) => void;
+  duplicate: (id: string) => void;
   copy: () => void;
   paste: () => void;
   removeSelected: () => void;
@@ -171,7 +179,7 @@ export const useFreeStore = create<FreeStore>((set, get) => {
       id: newId("f"),
       type: d.type,
       position: { x: pos.x - (d.w ?? 60) / 2, y: pos.y - (d.h ?? 20) / 2 },
-      data: { ...d.data },
+      data: { ...d.data, ...(author ? { author } : {}) },
       width: d.w,
       height: d.h,
     });
@@ -228,6 +236,22 @@ export const useFreeStore = create<FreeStore>((set, get) => {
         },
       ],
     });
+  },
+
+  remove: (id) => {
+    save();
+    set({
+      nodes: get().nodes.filter((n) => n.id !== id),
+      edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+    });
+  },
+
+  duplicate: (id) => {
+    const node = get().nodes.find((n) => n.id === id);
+    if (!node) return;
+    save();
+    const copy = { ...node, id: newId("f"), position: { x: node.position.x + 30, y: node.position.y + 30 }, selected: true };
+    set({ nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), copy] });
   },
 
   copy: () => set({ clipboard: get().nodes.filter((n) => n.selected) }),

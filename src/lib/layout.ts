@@ -3,7 +3,9 @@ import type { SwimlaneDiagram } from "@/types/diagram";
 import type { Node, Edge } from "@xyflow/react";
 import {
   LANE_HEADER_WIDTH,
+  LANE_HEADER_HEIGHT,
   LANE_MIN_HEIGHT,
+  LANE_MIN_WIDTH,
   LANE_PADDING,
   NODE_WIDTH,
   NODE_HEIGHT,
@@ -26,13 +28,16 @@ function nodeSize(type: string): { w: number; h: number } {
   return { w: NODE_WIDTH, h: NODE_HEIGHT };
 }
 
+// Horizontal: lanes are rows, the flow runs left to right.
+// Vertical: lanes are columns, the flow runs top to bottom.
 export function layoutDiagram(diagram: SwimlaneDiagram): {
   nodes: Node[];
   edges: Edge[];
   lanes: LaneBounds[];
 } {
+  const vertical = diagram.orientation === "vertical";
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 80, marginx: 20, marginy: 20 });
+  g.setGraph({ rankdir: vertical ? "TB" : "LR", nodesep: 50, ranksep: 80, marginx: 20, marginy: 20 });
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const node of diagram.nodes) {
@@ -46,7 +51,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
 
   dagre.layout(g);
 
-  // Group nodes by lane, compute lane y offsets
+  // Group nodes by lane
   const laneOrder = diagram.lanes.map((l) => l.id);
   const nodesByLane = new Map<string, typeof diagram.nodes>();
   for (const node of diagram.nodes) {
@@ -55,58 +60,58 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     nodesByLane.set(node.lane, list);
   }
 
-  // Compute the x-range from dagre layout
-  let globalMaxX = 0;
+  // How far the flow runs along its main axis
+  let flowEnd = 0;
   for (const node of diagram.nodes) {
     const pos = g.node(node.id);
-    const { w } = nodeSize(node.type);
-    if (pos) globalMaxX = Math.max(globalMaxX, pos.x + w / 2);
+    const { w, h } = nodeSize(node.type);
+    if (pos) flowEnd = Math.max(flowEnd, vertical ? pos.y + h / 2 : pos.x + w / 2);
   }
 
-  // Build lane bounds — each lane is a horizontal row
+  // Each lane's size across the flow, from the spread of its nodes
   const laneBounds: LaneBounds[] = [];
-  let currentY = 0;
+  let cursor = 0;
 
   for (const laneId of laneOrder) {
     const laneDef = diagram.lanes.find((l) => l.id === laneId)!;
     const laneNodes = nodesByLane.get(laneId) || [];
 
-    // Compute the height needed for this lane's nodes
-    let maxNodeBottom = 0;
-    for (const node of laneNodes) {
-      const { h } = nodeSize(node.type);
-      maxNodeBottom = Math.max(maxNodeBottom, h);
-    }
-    // Multiple nodes vertically? Check dagre y spread within this lane
-    let minY = Infinity;
-    let maxY = -Infinity;
+    let min = Infinity;
+    let max = -Infinity;
     for (const node of laneNodes) {
       const pos = g.node(node.id);
-      const { h } = nodeSize(node.type);
-      if (pos) {
-        minY = Math.min(minY, pos.y - h / 2);
-        maxY = Math.max(maxY, pos.y + h / 2);
-      }
+      const { w, h } = nodeSize(node.type);
+      if (!pos) continue;
+      min = Math.min(min, vertical ? pos.x - w / 2 : pos.y - h / 2);
+      max = Math.max(max, vertical ? pos.x + w / 2 : pos.y + h / 2);
     }
-    const contentHeight = minY === Infinity ? 0 : maxY - minY;
-    const laneHeight = Math.max(LANE_MIN_HEIGHT, contentHeight + LANE_PADDING * 2);
+    // Horizontal lanes grow with the spread of their nodes; vertical lanes are as wide as their widest node,
+    // since nodes sit centered in the column.
+    const widest = Math.max(0, ...laneNodes.map((n) => nodeSize(n.type).w));
+    const content = vertical ? widest : min === Infinity ? 0 : max - min;
+    const size = Math.max(vertical ? LANE_MIN_WIDTH : LANE_MIN_HEIGHT, content + LANE_PADDING * 2);
+    const length = flowEnd + (vertical ? LANE_HEADER_HEIGHT : LANE_HEADER_WIDTH) + LANE_PADDING * 2;
 
     laneBounds.push({
       id: laneId,
       label: laneDef.label,
       color: laneDef.color,
-      x: 0,
-      y: currentY,
-      width: globalMaxX + LANE_HEADER_WIDTH + LANE_PADDING * 2,
-      height: laneHeight,
+      x: vertical ? cursor : 0,
+      y: vertical ? 0 : cursor,
+      width: vertical ? size : length,
+      height: vertical ? length : size,
     });
-
-    currentY += laneHeight;
+    cursor += size;
   }
 
-  // Normalize lane widths to the widest
-  const maxWidth = Math.max(...laneBounds.map((l) => l.width), 800);
-  for (const lb of laneBounds) lb.width = maxWidth;
+  // Normalize lane lengths to the longest
+  if (vertical) {
+    const maxH = Math.max(...laneBounds.map((l) => l.height), 400);
+    for (const lb of laneBounds) lb.height = maxH;
+  } else {
+    const maxW = Math.max(...laneBounds.map((l) => l.width), 800);
+    for (const lb of laneBounds) lb.width = maxW;
+  }
 
   // Lane background nodes (rendered behind content nodes)
   const laneNodes: Node[] = laneBounds.map((lane) => ({
@@ -118,6 +123,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
       color: lane.color,
       laneWidth: lane.width,
       laneHeight: lane.height,
+      orientation: vertical ? "vertical" : "horizontal",
     },
     selectable: false,
     draggable: false,
@@ -125,7 +131,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     style: { width: lane.width, height: lane.height, zIndex: -1 },
   }));
 
-  // Position nodes: x from dagre, y centered in their lane
+  // Position nodes: along the flow from dagre, centered across their lane
   const contentNodes: Node[] = diagram.nodes.map((node) => {
     const pos = g.node(node.id);
     const { w, h } = nodeSize(node.type);
@@ -134,10 +140,9 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     return {
       id: node.id,
       type: node.type === "start" || node.type === "end" ? "startEnd" : node.type,
-      position: {
-        x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH,
-        y: lane.y + lane.height / 2 - h / 2,
-      },
+      position: vertical
+        ? { x: lane.x + lane.width / 2 - w / 2, y: (pos?.y ?? 0) - h / 2 + LANE_HEADER_HEIGHT }
+        : { x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH, y: lane.y + lane.height / 2 - h / 2 },
       data: { label: node.label, nodeType: node.type, description: node.description },
       style: { width: w, height: h },
     };
@@ -145,21 +150,44 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
 
   const rfNodes = [...laneNodes, ...contentNodes];
 
-  const rfEdges: Edge[] = diagram.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.from,
-    target: edge.to,
-    label: edge.label,
-    type: "smoothstep",
-    animated: edge.type === "conditional",
-    style: {
-      stroke: edge.type === "exception" ? "#dc2626" : "var(--muted-foreground)",
-      strokeWidth: 1.5,
-    },
-    labelStyle: { fontSize: 12, fontWeight: 500, fill: "var(--foreground)" },
-    labelBgStyle: { fill: "var(--background)", fillOpacity: 0.8 },
-    markerEnd: { type: "arrowclosed" as const, color: "var(--muted-foreground)" },
-  }));
+  // Nodes can have any number of paths in and out. Edges leave and enter along the flow;
+  // a decision's extra branches fan out sideways toward the lane they go to.
+  const laneIndex = new Map(laneOrder.map((id, i) => [id, i]));
+  const byId = new Map(diagram.nodes.map((n) => [n.id, n]));
+  const outCount = new Map<string, number>();
+
+  const rfEdges: Edge[] = diagram.edges.map((edge) => {
+    const from = byId.get(edge.from);
+    const to = byId.get(edge.to);
+    const n = outCount.get(edge.from) ?? 0;
+    outCount.set(edge.from, n + 1);
+    const fromLane = laneIndex.get(from?.lane ?? "") ?? 0;
+    const toLane = laneIndex.get(to?.lane ?? "") ?? 0;
+
+    let sourceHandle = vertical ? "b" : "r";
+    if (from?.type === "decision" && n > 0 && fromLane !== toLane) {
+      const later = toLane > fromLane;
+      sourceHandle = vertical ? (later ? "r" : "l") : later ? "b" : "t";
+    }
+
+    return {
+      id: edge.id,
+      source: edge.from,
+      target: edge.to,
+      sourceHandle,
+      targetHandle: vertical ? "t" : "l",
+      label: edge.label,
+      type: "smoothstep",
+      animated: edge.type === "conditional",
+      style: {
+        stroke: edge.type === "exception" ? "#dc2626" : "var(--muted-foreground)",
+        strokeWidth: 1.5,
+      },
+      labelStyle: { fontSize: 12, fontWeight: 500, fill: "var(--foreground)" },
+      labelBgStyle: { fill: "var(--background)", fillOpacity: 0.8 },
+      markerEnd: { type: "arrowclosed" as const, color: "var(--muted-foreground)" },
+    };
+  });
 
   return { nodes: rfNodes, edges: rfEdges, lanes: laneBounds };
 }

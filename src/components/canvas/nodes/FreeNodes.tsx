@@ -1,22 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
+import { NodeResizer, type NodeProps } from "@xyflow/react";
+import { AllHandles } from "./Handles";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { useFreeStore, uid, type KanbanCol, type TimelineItem } from "@/store/free-store";
-
-const SIDES = [
-  ["t", Position.Top],
-  ["r", Position.Right],
-  ["b", Position.Bottom],
-  ["l", Position.Left],
-] as const;
-
-function FreeHandles() {
-  return SIDES.map(([id, pos]) => (
-    <Handle key={id} id={id} type="source" position={pos} className="!h-2.5 !w-2.5 !border-none !bg-[#3b82f6]" />
-  ));
-}
 
 function InlineEdit({
   value, onCommit, className = "", single = false,
@@ -59,14 +47,17 @@ function EditableText({ id, text, className = "" }: { id: string; text: string; 
 const ring = (selected?: boolean) => (selected ? "outline outline-2 outline-offset-2 outline-[#3b82f6]" : "");
 
 export function StickyNode({ id, data, selected }: NodeProps) {
-  const d = data as { text: string; color: string };
+  const d = data as { text: string; color: string; author?: string };
   return (
     <div
-      className={`h-full w-full p-3 text-[14px] text-[#1a1a1a] shadow-md ${ring(selected)}`}
+      className={`flex h-full w-full flex-col p-3 text-[14px] text-[#1a1a1a] shadow-md ${ring(selected)}`}
       style={{ background: d.color, borderRadius: 4 }}
     >
-      <EditableText id={id} text={d.text} className="h-full" />
-      <FreeHandles />
+      <div className="min-h-0 flex-1">
+        <EditableText id={id} text={d.text} className="h-full" />
+      </div>
+      {d.author && <p className="mt-1 truncate text-[11px] text-black/50">{d.author}</p>}
+      <AllHandles />
     </div>
   );
 }
@@ -76,7 +67,7 @@ export function TextNode({ id, data, selected }: NodeProps) {
   return (
     <div className={`min-w-[80px] px-1 py-0.5 text-[18px] text-[#1a1a1a] ${ring(selected)}`}>
       <EditableText id={id} text={d.text} />
-      <FreeHandles />
+      <AllHandles />
     </div>
   );
 }
@@ -105,7 +96,7 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
       <div className="absolute inset-0 flex items-center justify-center p-3 text-center text-[13px] text-[#1a1a1a]">
         <EditableText id={id} text={d.text} className="text-center" />
       </div>
-      <FreeHandles />
+      <AllHandles />
     </div>
   );
 }
@@ -217,7 +208,7 @@ export function KanbanNode({ id, data, selected }: NodeProps) {
           <Plus className="size-3.5" /> Add column
         </button>
       </div>
-      <FreeHandles />
+      <AllHandles />
     </div>
   );
 }
@@ -283,7 +274,7 @@ export function TimelineNode({ id, data, selected }: NodeProps) {
           <Plus className="size-3.5" /> Add
         </button>
       </div>
-      <FreeHandles />
+      <AllHandles />
     </div>
   );
 }
@@ -354,7 +345,7 @@ export function TableNode({ id, data, selected }: NodeProps) {
           <Plus className="size-3.5" /> Row
         </button>
       </div>
-      <FreeHandles />
+      <AllHandles />
     </div>
   );
 }

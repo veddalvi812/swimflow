@@ -1,7 +1,8 @@
 "use client";
 
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import { EditableLabel } from "./EditableLabel";
+import { AllHandles } from "./Handles";
 
 export function DecisionNode({ id, data, selected }: NodeProps) {
   return (
@@ -15,9 +16,8 @@ export function DecisionNode({ id, data, selected }: NodeProps) {
           strokeWidth={selected ? 2 : 1.5}
         />
       </svg>
-      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-none !bg-[var(--muted)]" />
+      <AllHandles />
       <EditableLabel nodeId={id} label={(data as { label: string }).label} className="relative z-10 max-w-[50px] text-center text-[11px] font-medium leading-tight" />
-      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-none !bg-[var(--muted)]" />
     </div>
   );
 }

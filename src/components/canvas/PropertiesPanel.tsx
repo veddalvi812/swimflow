@@ -216,6 +216,7 @@ function EdgeProperties() {
 function DiagramProperties() {
   const diagram = useDiagramStore((s) => s.diagram);
   const updateTitle = useDiagramStore((s) => s.updateTitle);
+  const setOrientation = useDiagramStore((s) => s.setOrientation);
   const updateLane = useDiagramStore((s) => s.updateLane);
   const addLane = useDiagramStore((s) => s.addLane);
   const deleteLane = useDiagramStore((s) => s.deleteLane);
@@ -232,6 +233,24 @@ function DiagramProperties() {
             value={diagram.title}
             onChange={updateTitle}
           />
+        </Field>
+
+        <Field label="Swimlane direction">
+          <div className="flex gap-1 rounded-md bg-[var(--surface)] p-0.5">
+            {(["horizontal", "vertical"] as const).map((o) => (
+              <button
+                key={o}
+                onClick={() => setOrientation(o)}
+                className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                  (diagram.orientation ?? "horizontal") === o
+                    ? "bg-[var(--surface-raised)] shadow-sm"
+                    : "text-[var(--muted-foreground)]"
+                }`}
+              >
+                {o === "horizontal" ? "Horizontal lanes" : "Vertical lanes"}
+              </button>
+            ))}
+          </div>
         </Field>
       </div>
 

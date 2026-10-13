@@ -5,6 +5,7 @@ import { useReactFlow } from "@xyflow/react";
 import { ArrowLeft, Columns3, Milestone, Rows3, Table, Workflow, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GENERATORS, type Generator, type GeneratorId } from "@/lib/generators";
+import type { Orientation } from "@/types/diagram";
 
 const ICONS: Record<GeneratorId, LucideIcon> = {
   swimlane: Rows3,
@@ -25,6 +26,7 @@ export function MakeWizard({ compact = false, onDone, onBlank }: { compact?: boo
   const [description, setDescription] = useState("");
   const [paste, setPaste] = useState("");
   const [copied, setCopied] = useState(false);
+  const [orientation, setOrientation] = useState<Orientation>("horizontal");
   const [err, setErr] = useState("");
 
   const center = () => screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -46,7 +48,7 @@ export function MakeWizard({ compact = false, onDone, onBlank }: { compact?: boo
   const copy = async () => {
     if (!gen) return;
     // Clipboard can be blocked; the step still moves on and the user can use "Copy the prompt again".
-    await navigator.clipboard.writeText(gen.prompt(description)).catch(() => {});
+    await navigator.clipboard.writeText(gen.prompt(description, orientation)).catch(() => {});
     setCopied(true);
     setStep("paste");
   };
@@ -122,12 +124,30 @@ export function MakeWizard({ compact = false, onDone, onBlank }: { compact?: boo
             rows={compact ? 4 : 3}
             className={box}
           />
+          {gen.id === "swimlane" && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-[var(--muted-foreground)]">Lanes run</span>
+              <div className="flex gap-1 rounded-md bg-[var(--surface)] p-0.5">
+                {(["horizontal", "vertical"] as const).map((o) => (
+                  <button
+                    key={o}
+                    onClick={() => setOrientation(o)}
+                    className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                      orientation === o ? "bg-[var(--surface-raised)] shadow-sm" : "text-[var(--muted-foreground)]"
+                    }`}
+                  >
+                    {o === "horizontal" ? "Left to right" : "Top to bottom"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={copy} disabled={!description.trim()}>Copy prompt for my AI</Button>
             <Button
               variant="ghost"
               onClick={() => {
-                gen.starter(center());
+                gen.starter(center(), orientation);
                 finish();
               }}
             >

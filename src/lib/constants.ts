@@ -13,6 +13,8 @@ export const LANE_COLORS = [
 
 export const LANE_HEADER_WIDTH = 160;
 export const LANE_MIN_HEIGHT = 200;
+export const LANE_HEADER_HEIGHT = 56;
+export const LANE_MIN_WIDTH = 240;
 export const LANE_PADDING = 40;
 export const NODE_WIDTH = 160;
 export const NODE_HEIGHT = 50;

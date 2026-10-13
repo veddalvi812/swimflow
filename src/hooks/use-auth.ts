@@ -51,3 +51,9 @@ export function useAuth() {
 
   return { user, loading, signInWithGithub, signInWithGoogle, signOut, enabled: !!supabase };
 }
+
+// The name shown next to things you create: your Google/GitHub name, else the start of your email.
+export function displayName(user: User | null): string {
+  const m = user?.user_metadata ?? {};
+  return m.full_name ?? m.name ?? user?.email?.split("@")[0] ?? "";
+}

@@ -34,27 +34,31 @@ import { Toolbar } from "./Toolbar";
 import { RightPanel } from "./RightPanel";
 import { ToolRail } from "./ToolRail";
 import { MakeWizard } from "./MakeWizard";
+import { withToolbar } from "./nodes/withToolbar";
+import { useAuth, displayName } from "@/hooks/use-auth";
 import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode, TimelineNode, TableNode } from "./nodes/FreeNodes";
-import { useFreeStore, isFreeId } from "@/store/free-store";
+import { useFreeStore, isFreeId, setAuthor } from "@/store/free-store";
 import { undo, redo } from "@/store/history";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+const ProcessBox = withToolbar(ProcessNode);
+
 const nodeTypes = {
-  process: ProcessNode,
-  decision: DecisionNode,
-  startEnd: StartEndNode,
-  subprocess: SubprocessNode,
-  delay: ProcessNode,
-  document: ProcessNode,
-  datastore: ProcessNode,
+  process: ProcessBox,
+  decision: withToolbar(DecisionNode),
+  startEnd: withToolbar(StartEndNode),
+  subprocess: withToolbar(SubprocessNode),
+  delay: ProcessBox,
+  document: ProcessBox,
+  datastore: ProcessBox,
   lane: LaneNode,
-  sticky: StickyNode,
-  text: TextNode,
-  shape: ShapeNode,
-  frame: FrameNode,
-  kanban: KanbanNode,
-  timeline: TimelineNode,
-  table: TableNode,
+  sticky: withToolbar(StickyNode),
+  text: withToolbar(TextNode),
+  shape: withToolbar(ShapeNode),
+  frame: withToolbar(FrameNode),
+  kanban: withToolbar(KanbanNode),
+  timeline: withToolbar(TimelineNode),
+  table: withToolbar(TableNode),
 };
 
 function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; readOnly: boolean; shareSlot?: React.ReactNode }) {
@@ -67,6 +71,8 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
   const tool = useFreeStore((s) => s.tool);
   const boardEmpty = useDiagramStore((s) => s.diagram.lanes.length === 0 && s.diagram.nodes.length === 0) && freeNodes.length === 0;
   const [welcomeClosed, setWelcomeClosed] = useState(false);
+  const { user } = useAuth();
+  useEffect(() => setAuthor(displayName(user)), [user]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);

@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import type { Node, Edge } from "@xyflow/react";
-import type { SwimlaneDiagram, DiagramNode, DiagramEdge, Lane } from "@/types/diagram";
+import type { SwimlaneDiagram, DiagramNode, DiagramEdge, Lane, Orientation } from "@/types/diagram";
 import { layoutDiagram, type LaneBounds } from "@/lib/layout";
 import { SAMPLE_DIAGRAM, LANE_COLORS } from "@/lib/constants";
 import { record, registerHistory } from "./history";
@@ -44,6 +44,7 @@ interface DiagramStore {
   deleteNode: (id: string) => void;
   deleteEdge: (id: string) => void;
   updateTitle: (title: string) => void;
+  setOrientation: (o: Orientation) => void;
   exportJSON: () => string;
   importJSON: (json: string) => boolean;
 }
@@ -218,6 +219,10 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
       edges: diagram.edges.filter((e) => e.id !== id),
     };
     set(commit(get, updated, { selectedEdgeId: null }));
+  },
+
+  setOrientation: (orientation) => {
+    set(commit(get, { ...get().diagram, orientation }));
   },
 
   updateTitle: (title) => {

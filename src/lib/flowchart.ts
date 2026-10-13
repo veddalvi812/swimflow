@@ -26,6 +26,7 @@ export const FLOW_PROMPT = `Generate a flowchart as JSON for: "{describe your pr
 
 Return only this structure. Node types: start, process, decision, end.
 Put a label on each edge that leaves a decision (e.g. "Yes", "No").
+A step may have several incoming and outgoing edges; add one edge per path.
 {
   "nodes": [ { "id": "n1", "label": "...", "type": "start" } ],
   "edges": [ { "from": "n1", "to": "n2", "label": "" } ]

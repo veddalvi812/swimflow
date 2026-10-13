@@ -1,7 +1,8 @@
 "use client";
 
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import { EditableLabel } from "./EditableLabel";
+import { AllHandles } from "./Handles";
 
 export function SubprocessNode({ id, data, selected }: NodeProps) {
   return (
@@ -10,9 +11,8 @@ export function SubprocessNode({ id, data, selected }: NodeProps) {
         selected ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/30" : "border-[var(--border)]"
       }`}
     >
-      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-none !bg-[var(--muted)]" />
+      <AllHandles />
       <EditableLabel nodeId={id} label={(data as { label: string }).label} className="text-center leading-tight" />
-      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-none !bg-[var(--muted)]" />
     </div>
   );
 }

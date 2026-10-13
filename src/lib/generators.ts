@@ -2,7 +2,7 @@ import { useDiagramStore } from "@/store/diagram-store";
 import { useFreeStore, uid, type KanbanCol, type Tool } from "@/store/free-store";
 import { FLOW_PROMPT, parseFlow } from "@/lib/flowchart";
 import { LANE_COLORS } from "@/lib/constants";
-import type { SwimlaneDiagram } from "@/types/diagram";
+import type { SwimlaneDiagram, Orientation } from "@/types/diagram";
 
 type Pos = { x: number; y: number };
 type Json = Record<string, unknown>;
@@ -82,13 +82,15 @@ const SWIMLANE_PROMPT = `You are a swimlane diagram generator. Given a process d
 Schema:
 {
   "title": "string",
-  "orientation": "horizontal",
+  "orientation": "{orientation}",
   "lanes": [{ "id": "string", "label": "string", "color": "string (hex)" }],
   "nodes": [{ "id": "string", "type": "start|end|process|decision|subprocess", "label": "string", "lane": "string (lane id)" }],
   "edges": [{ "id": "string", "from": "string (node id)", "to": "string (node id)", "label": "string (optional)", "type": "default|conditional" }]
 }
 
 Rules:
+- Set "orientation" to "{orientation}" (horizontal lanes are rows, vertical lanes are columns)
+- A node may have several incoming and outgoing edges (splits and joins). Add one edge per path; never force a single path
 - Every diagram must have exactly one "start" node and at least one "end" node
 - Decision nodes must have at least 2 outgoing edges with labels (e.g. "Yes"/"No")
 - Every node's "lane" must reference a valid lane id
@@ -107,9 +109,9 @@ export interface Generator {
   noun: string; // "Tell me about your ___"
   blurb: string;
   placeholder: string;
-  prompt: (description: string) => string;
+  prompt: (description: string, orientation: Orientation) => string;
   build: (text: string, pos: Pos) => void; // throws on bad input
-  starter: (pos: Pos) => void;
+  starter: (pos: Pos, orientation: Orientation) => void;
 }
 
 const armed = (tool: Tool) => (pos: Pos) => {
@@ -143,16 +145,16 @@ export const GENERATORS: Generator[] = [
     noun: "process",
     blurb: "Who does what, step by step",
     placeholder: "A customer places an order, the warehouse packs it, and a courier delivers it",
-    prompt: (d) => fill(SWIMLANE_PROMPT, d),
+    prompt: (d, o) => fill(SWIMLANE_PROMPT, d).replaceAll("{orientation}", o),
     build: (text) => {
       const p = parse(text) as unknown as SwimlaneDiagram;
       if (!p.lanes || !p.nodes || !p.edges) throw new Error("Missing lanes, nodes, or edges");
-      useDiagramStore.getState().setDiagram(p);
+      useDiagramStore.getState().setDiagram({ ...p, orientation: p.orientation === "vertical" ? "vertical" : "horizontal" });
     },
-    starter: () =>
+    starter: (_, orientation) =>
       useDiagramStore.getState().setDiagram({
         title: "New process",
-        orientation: "horizontal",
+        orientation,
         lanes: [0, 1, 2].map((i) => ({ id: `lane-${i + 1}`, label: `Lane ${i + 1}`, color: LANE_COLORS[i] })),
         nodes: [],
         edges: [],
