@@ -2,10 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { useUi } from "@/store/ui";
+import { SHORTCUTS } from "@/lib/hotkeys";
 
 export function UiHost() {
   const dialog = useUi((s) => s.dialog);
   const toasts = useUi((s) => s.toasts);
+  const shortcuts = useUi((s) => s.shortcuts);
   const input = useRef<HTMLInputElement>(null);
 
   const close = (value: string | boolean | null) => {
@@ -65,6 +67,39 @@ export function UiHost() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {shortcuts && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4" onClick={() => useUi.setState({ shortcuts: false })}>
+          <div
+            role="dialog"
+            aria-label="Keyboard shortcuts"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[#e4e4e7] bg-white p-6 text-[#1a1a1a] shadow-xl"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-medium">Keyboard shortcuts</h2>
+              <button onClick={() => useUi.setState({ shortcuts: false })} className="rounded-full px-3 py-1 text-sm text-[#52525b] hover:bg-[#f4f4f5]">
+                Close
+              </button>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {SHORTCUTS.map((g) => (
+                <section key={g.group}>
+                  <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-[#71717a]">{g.group}</h3>
+                  <dl className="flex flex-col gap-1.5 text-sm">
+                    {g.items.map(([keys, what]) => (
+                      <div key={keys} className="flex items-baseline justify-between gap-3">
+                        <dt className="text-[#52525b]">{what}</dt>
+                        <dd className="shrink-0 rounded bg-[#f4f4f5] px-1.5 py-0.5 font-mono text-xs">{keys}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

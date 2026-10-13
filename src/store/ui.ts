@@ -24,9 +24,11 @@ export interface Toast {
 interface UiStore {
   dialog: DialogState | null;
   toasts: Toast[];
+  shortcuts: boolean;
+  searching: boolean;
 }
 
-export const useUi = create<UiStore>(() => ({ dialog: null, toasts: [] }));
+export const useUi = create<UiStore>(() => ({ dialog: null, toasts: [], shortcuts: false, searching: false }));
 
 type Common = { title: string; message?: string; confirmLabel?: string };
 

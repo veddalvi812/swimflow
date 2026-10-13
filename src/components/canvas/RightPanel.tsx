@@ -1,23 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Copy, Trash2 } from "lucide-react";
+import { FreeProperties, MultiProperties, EdgeProperties, ArrangeRow, card, maxH } from "./ObjectProperties";
 import { useDiagramStore } from "@/store/diagram-store";
-import { useFreeStore, snapshotOf, STICKY_COLORS } from "@/store/free-store";
+import { useFreeStore, snapshotOf } from "@/store/free-store";
 import { applyBoardJSON } from "@/lib/board-json";
 import { MakeWizard } from "./MakeWizard";
 import { BLOCK_SPECS } from "@/lib/generators";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { Button } from "@/components/ui/button";
 
-const card =
-  "pointer-events-auto flex flex-col gap-3 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3 shadow-md";
-const maxH = { maxHeight: "calc(100vh - 170px)" };
-
 function BlockProperties({ id, kind }: { id: string; kind: string }) {
   const node = useFreeStore((s) => s.nodes.find((n) => n.id === id));
   const update = useFreeStore((s) => s.update);
-  const removeSelected = useFreeStore((s) => s.removeSelected);
   const [paste, setPaste] = useState("");
   const [err, setErr] = useState("");
   const cfg = BLOCK_SPECS[kind];
@@ -58,64 +54,7 @@ function BlockProperties({ id, kind }: { id: string; kind: string }) {
       />
       {err && <p className="text-xs text-[var(--error)]">{err}</p>}
       <Button size="sm" onClick={apply} disabled={!paste.trim()}>{cfg.replace}</Button>
-      <Button variant="destructive" size="sm" className="gap-1.5" onClick={removeSelected}>
-        <Trash2 className="size-3.5" /> Delete
-      </Button>
-    </div>
-  );
-}
-
-function FreeProperties({ id }: { id: string }) {
-  const node = useFreeStore((s) => s.nodes.find((n) => n.id === id));
-  const update = useFreeStore((s) => s.update);
-  const copy = useFreeStore((s) => s.copy);
-  const paste = useFreeStore((s) => s.paste);
-  const removeSelected = useFreeStore((s) => s.removeSelected);
-  if (!node) return null;
-  const d = node.data as { text: string; color?: string; shape?: string };
-  const colors = node.type === "sticky" ? STICKY_COLORS : node.type === "shape" ? ["#ffffff", ...STICKY_COLORS] : null;
-
-  return (
-    <div className={card} style={maxH}>
-      <h3 className="text-sm font-semibold capitalize">{node.type}</h3>
-      <textarea
-        value={d.text}
-        onChange={(e) => update(id, { text: e.target.value })}
-        rows={3}
-        className="w-full resize-none rounded-md border border-[var(--border)] bg-[var(--background)] px-2.5 py-2 text-sm outline-none focus:border-[var(--border-focus)]"
-      />
-      {colors && (
-        <div className="flex gap-2">
-          {colors.map((c) => (
-            <button
-              key={c}
-              aria-label={`Color ${c}`}
-              onClick={() => update(id, { color: c })}
-              className={`size-6 rounded-full border ${d.color === c ? "ring-2 ring-[#3b82f6] ring-offset-1" : "border-[var(--border)]"}`}
-              style={{ background: c }}
-            />
-          ))}
-        </div>
-      )}
-      {node.type === "shape" && (
-        <select
-          value={d.shape}
-          onChange={(e) => update(id, { shape: e.target.value })}
-          className="h-8 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 text-sm outline-none"
-        >
-          <option value="rect">Rectangle</option>
-          <option value="ellipse">Ellipse</option>
-          <option value="diamond">Diamond</option>
-        </select>
-      )}
-      <div className="flex gap-2">
-        <Button variant="secondary" size="sm" className="flex-1 gap-1.5" onClick={() => { copy(); paste(); }}>
-          <Copy className="size-3.5" /> Duplicate
-        </Button>
-        <Button variant="destructive" size="sm" className="flex-1 gap-1.5" onClick={removeSelected}>
-          <Trash2 className="size-3.5" /> Delete
-        </Button>
-      </div>
+      <ArrangeRow />
     </div>
   );
 }
@@ -169,8 +108,16 @@ function JsonPanel() {
 
 export function RightPanel() {
   const [tab, setTab] = useState<"props" | "json" | "ai">("props");
-  const freeSelected = useFreeStore((s) => s.nodes.find((n) => n.selected));
-  const freeSelectedId = freeSelected?.id;
+  const allFree = useFreeStore((s) => s.nodes);
+  const selectedNodes = useMemo(() => allFree.filter((n) => n.selected), [allFree]);
+  const selectedEdge = useFreeStore((s) => s.edges.find((e) => e.selected));
+  const one = selectedNodes.length === 1 ? selectedNodes[0] : undefined;
+
+  // Selecting something on the canvas brings its properties forward.
+  const selectionKey = selectedNodes.map((n) => n.id).join(",") + "|" + (selectedEdge?.id ?? "");
+  useEffect(() => {
+    if (selectionKey !== "|") setTab("props");
+  }, [selectionKey]);
 
   const tabBtn = (t: typeof tab, label: string) => (
     <button
@@ -183,6 +130,13 @@ export function RightPanel() {
     </button>
   );
 
+  let props;
+  if (selectedNodes.length > 1) props = <MultiProperties count={selectedNodes.length} />;
+  else if (one?.type && BLOCK_SPECS[one.type]) props = <BlockProperties id={one.id} kind={one.type} />;
+  else if (one) props = <FreeProperties id={one.id} />;
+  else if (selectedEdge) props = <EdgeProperties id={selectedEdge.id} />;
+  else props = <PropertiesPanel />;
+
   return (
     <div className="flex flex-col gap-2" style={{ width: 300 }}>
       <div className="pointer-events-auto flex gap-1 rounded-lg bg-[var(--surface)] p-1">
@@ -194,9 +148,7 @@ export function RightPanel() {
         <div className={card} style={maxH}>
           <MakeWizard compact />
         </div>
-      ) : freeSelectedId ? (
-        freeSelected?.type && BLOCK_SPECS[freeSelected.type] ? <BlockProperties id={freeSelectedId} kind={freeSelected.type} /> : <FreeProperties id={freeSelectedId} />
-      ) : <PropertiesPanel />}
+      ) : props}
     </div>
   );
 }

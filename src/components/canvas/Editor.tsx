@@ -34,10 +34,15 @@ import { LaneNode } from "./nodes/LaneNode";
 import { Toolbar } from "./Toolbar";
 import { RightPanel } from "./RightPanel";
 import { ToolRail } from "./ToolRail";
+import { DrawLayer } from "./DrawLayer";
+import { SearchBox } from "./SearchBox";
+import { TOOL_KEYS } from "@/lib/hotkeys";
+import { addImageFile } from "@/lib/images";
+import { useUi } from "@/store/ui";
 import { MakeWizard } from "./MakeWizard";
 import { withToolbar } from "./nodes/withToolbar";
 import { useAuth, displayName } from "@/hooks/use-auth";
-import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode, TimelineNode, TableNode } from "./nodes/FreeNodes";
+import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode, TimelineNode, TableNode, ImageNode, StampNode, LinkNode, PenNode } from "./nodes/FreeNodes";
 import { useFreeStore, isFreeId, setAuthor } from "@/store/free-store";
 import { undo, redo } from "@/store/history";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -60,6 +65,10 @@ const nodeTypes = {
   kanban: withToolbar(KanbanNode),
   timeline: withToolbar(TimelineNode),
   table: withToolbar(TableNode),
+  image: withToolbar(ImageNode),
+  stamp: withToolbar(StampNode),
+  link: withToolbar(LinkNode),
+  pen: withToolbar(PenNode),
 };
 
 function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; readOnly: boolean; shareSlot?: React.ReactNode }) {
@@ -113,7 +122,23 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
   // Swimlane objects stay in local state; free-form objects (ids "f-…"/"fe-…") live in the free store.
   const allNodes = useMemo(() => [...nodes, ...freeNodes], [nodes, freeNodes]);
   const allEdges = useMemo(
-    () => [...edges, ...freeEdges.map((e) => ({ ...e, type: "smoothstep", markerEnd: { type: MarkerType.ArrowClosed } }))],
+    () => [
+      ...edges,
+      ...freeEdges.map((e) => {
+        const d = (e.data ?? {}) as { arrow?: string; dashed?: boolean; color?: string };
+        const color = d.color ?? "#71717a";
+        const head = { type: MarkerType.ArrowClosed, color };
+        return {
+          ...e,
+          type: e.type ?? "smoothstep",
+          markerEnd: d.arrow === "none" ? undefined : head,
+          markerStart: d.arrow === "both" ? head : undefined,
+          style: { stroke: color, strokeWidth: 2, strokeDasharray: d.dashed ? "6 4" : undefined },
+          labelStyle: { fontSize: 12, fontWeight: 500, fill: "#1a1a1a" },
+          reconnectable: true,
+        };
+      }),
+    ],
     [edges, freeEdges]
   );
 
@@ -212,6 +237,42 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
 
   const router = useRouter();
 
+  // Paste an image from the clipboard onto the canvas.
+  useEffect(() => {
+    if (readOnly) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+      if (!files.length) return;
+      e.preventDefault();
+      const at = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+      files.forEach((f) => addImageFile(f, at));
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [readOnly, screenToFlowPosition]);
+
+  // Drag a tool from the rail, or an image file from your computer, onto the canvas.
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (readOnly) return;
+      const at = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const toolName = e.dataTransfer.getData("application/x-swimflow-tool");
+      const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
+      if (toolName) {
+        e.preventDefault();
+        const free = useFreeStore.getState();
+        free.setTool(toolName as never);
+        free.place(at);
+      } else if (files.length) {
+        e.preventDefault();
+        files.forEach((f, i) => addImageFile(f, { x: at.x + i * 24, y: at.y + i * 24 }));
+      }
+    },
+    [readOnly, screenToFlowPosition]
+  );
+
   const addEdgeAction = useDiagramStore((s) => s.addEdge);
   const deleteNode = useDiagramStore((s) => s.deleteNode);
   const deleteEdge = useDiagramStore((s) => s.deleteEdge);
@@ -219,10 +280,8 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
   const handleConnect: OnConnect = useCallback(
     (connection) => {
       if (!connection.source || !connection.target) return;
-      if (isFreeId(connection.source) && isFreeId(connection.target)) useFreeStore.getState().connect(connection);
-      else if (!isFreeId(connection.source) && !isFreeId(connection.target)) {
-        addEdgeAction(connection.source, connection.target);
-      }
+      if (isFreeId(connection.source) || isFreeId(connection.target)) useFreeStore.getState().connect(connection);
+      else addEdgeAction(connection.source, connection.target);
     },
     [addEdgeAction]
   );
@@ -233,7 +292,36 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
-      if (e.key === "Escape") useFreeStore.getState().setTool(null);
+      if (e.key === "Escape") {
+        useFreeStore.getState().setTool(null);
+        useUi.setState({ shortcuts: false, searching: false });
+      }
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const key = e.key.toLowerCase();
+        if (e.key === "?") useUi.setState((u) => ({ shortcuts: !u.shortcuts }));
+        else if (!e.shiftKey && key in TOOL_KEYS) useFreeStore.getState().setTool(TOOL_KEYS[key]);
+        else if (e.shiftKey && e.code === "Digit1") fitView({ padding: 0.1, duration: 250 });
+        else if (e.shiftKey && e.code === "Digit2") {
+          const sel = useFreeStore.getState().nodes.filter((n) => n.selected);
+          if (sel.length) fitView({ nodes: sel, padding: 0.3, duration: 250 });
+        } else if (e.key.startsWith("Arrow")) {
+          const step = e.shiftKey ? 10 : 1;
+          const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+          const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+          if (useFreeStore.getState().nodes.some((n) => n.selected)) {
+            e.preventDefault();
+            useFreeStore.getState().nudge(dx, dy);
+          }
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        useFreeStore.getState().selectAll();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        useUi.setState({ searching: true });
+      }
       if (e.ctrlKey || e.metaKey) {
         const free = useFreeStore.getState();
         if (e.key === "c") free.copy();
@@ -258,10 +346,12 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [deleteNode, deleteEdge, readOnly]);
+  }, [deleteNode, deleteEdge, readOnly, fitView]);
 
   return (
     <div onDoubleClick={handleDoubleClick}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
       className={`${tool ? "tool-armed" : ""} ${readOnly ? "readonly" : ""}`} style={{ position: "relative", width: "100vw", height: "100vh", background: "var(--background)" }}>
       <ReactFlow
         nodes={allNodes}
@@ -278,6 +368,7 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
         onNodeDragStop={handleNodeDragStop}
         zoomOnDoubleClick={false}
         onConnect={handleConnect}
+        onReconnect={(old, conn) => old.id.startsWith("fe-") && useFreeStore.getState().reconnect(old.id, conn)}
         onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
@@ -307,6 +398,12 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="5" rx="1.5" fill="#60a5fa" /><rect x="3" y="10" width="18" height="5" rx="1.5" fill="#60a5fa" opacity="0.6" /><rect x="3" y="17" width="18" height="4" rx="1.5" fill="#60a5fa" opacity="0.3" /></svg>
             SwimFlow
           </Link>
+        </Panel>
+
+        {!readOnly && <DrawLayer />}
+
+        <Panel position="top-center" className="pointer-events-none mt-14">
+          <SearchBox />
         </Panel>
 
         {readOnly ? (

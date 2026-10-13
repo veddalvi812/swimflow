@@ -16,7 +16,9 @@ import {
 // Free-form canvas objects (stickies, text, shapes, frames) that live beside the swimlane diagram.
 // Undo/redo: snapshots of {nodes, edges}, ordered against the swimlane via store/history.ts.
 
-export type Tool = "sticky" | "text" | "rect" | "ellipse" | "diamond" | "frame" | "kanban" | "timeline" | "table" | "flowchart";
+export type Tool =
+  | "sticky" | "text" | "rect" | "ellipse" | "diamond" | "hexagon" | "parallelogram" | "triangle" | "star"
+  | "cylinder" | "document" | "cloud" | "frame" | "kanban" | "timeline" | "table" | "flowchart" | "pen" | "arrow";
 
 export interface KanbanCol {
   id: string;
@@ -34,12 +36,19 @@ export const uid = () => Math.random().toString(36).slice(2, 9);
 
 export const STICKY_COLORS = ["#fef08a", "#bbf7d0", "#bfdbfe", "#fecaca", "#e9d5ff"];
 
-const DEFAULTS: Record<Exclude<Tool, "flowchart">, { type: string; data: Record<string, unknown>; w?: number; h?: number }> = {
+const DEFAULTS: Record<Exclude<Tool, "flowchart" | "pen" | "arrow">, { type: string; data: Record<string, unknown>; w?: number; h?: number }> = {
   sticky: { type: "sticky", data: { text: "New note", color: STICKY_COLORS[0] }, w: 160, h: 160 },
   text: { type: "text", data: { text: "Text" } },
   rect: { type: "shape", data: { text: "", shape: "rect", color: "#ffffff" }, w: 140, h: 80 },
   ellipse: { type: "shape", data: { text: "", shape: "ellipse", color: "#ffffff" }, w: 140, h: 80 },
   diamond: { type: "shape", data: { text: "", shape: "diamond", color: "#ffffff" }, w: 140, h: 100 },
+  hexagon: { type: "shape", data: { text: "", shape: "hexagon", color: "#ffffff" }, w: 140, h: 90 },
+  parallelogram: { type: "shape", data: { text: "", shape: "parallelogram", color: "#ffffff" }, w: 160, h: 80 },
+  triangle: { type: "shape", data: { text: "", shape: "triangle", color: "#ffffff" }, w: 120, h: 110 },
+  star: { type: "shape", data: { text: "", shape: "star", color: "#fef08a" }, w: 120, h: 120 },
+  cylinder: { type: "shape", data: { text: "", shape: "cylinder", color: "#ffffff" }, w: 110, h: 130 },
+  document: { type: "shape", data: { text: "", shape: "document", color: "#ffffff" }, w: 140, h: 110 },
+  cloud: { type: "shape", data: { text: "", shape: "cloud", color: "#ffffff" }, w: 160, h: 110 },
   frame: { type: "frame", data: { text: "Frame" }, w: 400, h: 300 },
   table: {
     type: "table",
@@ -87,13 +96,18 @@ export const isFreeId = (id: string) => id.startsWith("f-");
 let seq = 0;
 const newId = (p: string) => `${p}-${Date.now()}-${seq++}`;
 
-const hydrate = (n: Node): Node => ({ ...n, selected: false, zIndex: n.type === "frame" ? -1 : undefined });
+const hydrate = (n: Node): Node => ({
+  ...n,
+  selected: false,
+  zIndex: n.type === "frame" ? -1 : undefined,
+  draggable: n.data?.locked ? false : undefined,
+});
 
 export function snapshotOf(nodes: Node[], edges: Edge[]) {
   return {
     nodes: nodes.map(({ id, type, position, data, width, height }) => ({ id, type, position, data, width, height })),
-    edges: edges.map(({ id, source, target, sourceHandle, targetHandle, label }) => ({
-      id, source, target, sourceHandle, targetHandle, label,
+    edges: edges.map(({ id, source, target, sourceHandle, targetHandle, label, type, data }) => ({
+      id, source, target, sourceHandle, targetHandle, label, type, data,
     })),
   };
 }
@@ -114,7 +128,21 @@ interface FreeStore {
   setTool: (t: Tool | null) => void;
   place: (pos: { x: number; y: number }) => void;
   addFlowchart: (spec: FlowSpec, pos: { x: number; y: number }) => void;
-  addBlock: (type: string, data: Record<string, unknown>, pos: { x: number; y: number }) => void;
+  addBlock: (
+    type: string,
+    data: Record<string, unknown>,
+    pos: { x: number; y: number },
+    opts?: { w?: number; h?: number; fixed?: boolean; keepTool?: boolean }
+  ) => void;
+  selectAll: () => void;
+  nudge: (dx: number, dy: number) => void;
+  bringToFront: () => void;
+  sendToBack: () => void;
+  setLocked: (locked: boolean) => void;
+  align: (kind: "left" | "center" | "right" | "top" | "middle" | "bottom") => void;
+  distribute: (axis: "x" | "y") => void;
+  updateEdge: (id: string, patch: { label?: string; type?: string; data?: Record<string, unknown> }) => void;
+  reconnect: (id: string, c: Connection) => void;
   applyNodeChanges: (c: NodeChange[]) => void;
   applyEdgeChanges: (c: EdgeChange[]) => void;
   update: (id: string, patch: Record<string, unknown>) => void;
@@ -173,6 +201,7 @@ export const useFreeStore = create<FreeStore>((set, get) => {
     const { tool, nodes } = get();
     if (!tool) return;
     if (tool === "flowchart") return get().addFlowchart(STARTER_FLOW, pos);
+    if (tool === "pen" || tool === "arrow") return;
     const d = DEFAULTS[tool];
     save();
     const node: Node = hydrate({
@@ -186,10 +215,128 @@ export const useFreeStore = create<FreeStore>((set, get) => {
     set({ nodes: [...nodes.map((n) => ({ ...n, selected: false })), { ...node, selected: true }], tool: null });
   },
 
-  addBlock: (type, data, pos) => {
+  // Drops an object centered on `pos`. `fixed` also pins its size; otherwise it sizes to its content.
+  addBlock: (type, data, pos, opts = {}) => {
     save();
-    const node = hydrate({ id: newId("f"), type, position: { x: pos.x - 300, y: pos.y - 120 }, data });
-    set({ nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), { ...node, selected: true }], tool: null });
+    const { w = 600, h = 240, fixed = false, keepTool = false } = opts;
+    const node = hydrate({
+      id: newId("f"),
+      type,
+      position: { x: pos.x - w / 2, y: pos.y - h / 2 },
+      data: { ...data, ...(author && type === "sticky" ? { author } : {}) },
+      ...(fixed ? { width: w, height: h } : {}),
+    });
+    set({
+      nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), { ...node, selected: true }],
+      ...(keepTool ? {} : { tool: null }),
+    });
+  },
+
+  selectAll: () => set({ nodes: get().nodes.map((n) => ({ ...n, selected: true })) }),
+
+  nudge: (dx, dy) => {
+    const movable = (n: Node) => n.selected && !n.data?.locked;
+    if (!get().nodes.some(movable)) return;
+    save("nudge", 600);
+    set({ nodes: get().nodes.map((n) => (movable(n) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)) });
+  },
+
+  bringToFront: () => {
+    const { nodes } = get();
+    save();
+    set({ nodes: [...nodes.filter((n) => !n.selected), ...nodes.filter((n) => n.selected)] });
+  },
+
+  sendToBack: () => {
+    const { nodes } = get();
+    save();
+    set({ nodes: [...nodes.filter((n) => n.selected), ...nodes.filter((n) => !n.selected)] });
+  },
+
+  setLocked: (locked) => {
+    save();
+    set({
+      nodes: get().nodes.map((n) =>
+        n.selected ? { ...n, draggable: locked ? false : undefined, data: { ...n.data, locked } } : n
+      ),
+    });
+  },
+
+  align: (kind) => {
+    const sel = get().nodes.filter((n) => n.selected && !n.data?.locked);
+    if (sel.length < 2) return;
+    const box = (n: Node) => ({ w: n.measured?.width ?? n.width ?? 0, h: n.measured?.height ?? n.height ?? 0 });
+    const minX = Math.min(...sel.map((n) => n.position.x));
+    const maxX = Math.max(...sel.map((n) => n.position.x + box(n).w));
+    const minY = Math.min(...sel.map((n) => n.position.y));
+    const maxY = Math.max(...sel.map((n) => n.position.y + box(n).h));
+    save();
+    set({
+      nodes: get().nodes.map((n) => {
+        if (!n.selected || n.data?.locked) return n;
+        const { w, h } = box(n);
+        const p = { ...n.position };
+        if (kind === "left") p.x = minX;
+        if (kind === "center") p.x = (minX + maxX) / 2 - w / 2;
+        if (kind === "right") p.x = maxX - w;
+        if (kind === "top") p.y = minY;
+        if (kind === "middle") p.y = (minY + maxY) / 2 - h / 2;
+        if (kind === "bottom") p.y = maxY - h;
+        return { ...n, position: p };
+      }),
+    });
+  },
+
+  // Spreads three or more selected objects so the gaps between them are equal.
+  distribute: (axis) => {
+    const sel = get().nodes.filter((n) => n.selected && !n.data?.locked);
+    if (sel.length < 3) return;
+    const size = (n: Node) => (axis === "x" ? n.measured?.width ?? n.width ?? 0 : n.measured?.height ?? n.height ?? 0);
+    const at = (n: Node) => (axis === "x" ? n.position.x : n.position.y);
+    const sorted = [...sel].sort((a, b) => at(a) - at(b));
+    const first = at(sorted[0]);
+    const last = at(sorted[sorted.length - 1]) + size(sorted[sorted.length - 1]);
+    const gap = (last - first - sorted.reduce((sum, n) => sum + size(n), 0)) / (sorted.length - 1);
+    const target = new Map<string, number>();
+    let cursor = first;
+    for (const n of sorted) {
+      target.set(n.id, cursor);
+      cursor += size(n) + gap;
+    }
+    save();
+    set({
+      nodes: get().nodes.map((n) =>
+        target.has(n.id) ? { ...n, position: axis === "x" ? { x: target.get(n.id)!, y: n.position.y } : { x: n.position.x, y: target.get(n.id)! } } : n
+      ),
+    });
+  },
+
+  updateEdge: (id, patch) => {
+    save(`e:${id}`, 1000);
+    set({
+      edges: get().edges.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              ...(patch.label !== undefined ? { label: patch.label } : {}),
+              ...(patch.type ? { type: patch.type } : {}),
+              data: { ...e.data, ...patch.data },
+            }
+          : e
+      ),
+    });
+  },
+
+  reconnect: (id, c) => {
+    if (!c.source || !c.target || c.source === c.target) return;
+    save();
+    set({
+      edges: get().edges.map((e) =>
+        e.id === id
+          ? { ...e, source: c.source, target: c.target, sourceHandle: c.sourceHandle, targetHandle: c.targetHandle }
+          : e
+      ),
+    });
   },
 
   addFlowchart: (spec, pos) => {

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { NodeResizer, type NodeProps } from "@xyflow/react";
+import { ExternalLink, Link as LinkIcon } from "lucide-react";
+import { hexToRgba, safeUrl, textStyle, type Look } from "@/lib/style";
 import { AllHandles } from "./Handles";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { useFreeStore, uid, type KanbanCol, type TimelineItem } from "@/store/free-store";
@@ -47,13 +49,13 @@ function EditableText({ id, text, className = "" }: { id: string; text: string; 
 const ring = (selected?: boolean) => (selected ? "outline outline-2 outline-offset-2 outline-[#3b82f6]" : "");
 
 export function StickyNode({ id, data, selected }: NodeProps) {
-  const d = data as { text: string; color: string; author?: string };
+  const d = data as unknown as Look & { text: string; color: string; author?: string };
   return (
     <div
       className={`flex h-full w-full flex-col p-3 text-[14px] text-[#1a1a1a] shadow-md ${ring(selected)}`}
-      style={{ background: d.color, borderRadius: 4 }}
+      style={{ background: d.color, borderRadius: d.radius ?? 4 }}
     >
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1" style={textStyle(d)}>
         <EditableText id={id} text={d.text} className="h-full" />
       </div>
       {d.author && <p className="mt-1 truncate text-[11px] text-black/50">{d.author}</p>}
@@ -63,38 +65,69 @@ export function StickyNode({ id, data, selected }: NodeProps) {
 }
 
 export function TextNode({ id, data, selected }: NodeProps) {
-  const d = data as { text: string };
+  const d = data as unknown as Look & { text: string };
   return (
-    <div className={`min-w-[80px] px-1 py-0.5 text-[18px] text-[#1a1a1a] ${ring(selected)}`}>
+    <div className={`min-w-[80px] px-1 py-0.5 text-[18px] text-[#1a1a1a] ${ring(selected)}`} style={textStyle(d)}>
       <EditableText id={id} text={d.text} />
       <AllHandles />
     </div>
   );
 }
 
+// Outlines on a 0-100 box, stretched to the node's size.
+const POLYGONS: Record<string, string> = {
+  diamond: "50,1 99,50 50,99 1,50",
+  hexagon: "25,2 75,2 99,50 75,98 25,98 1,50",
+  parallelogram: "18,2 99,2 82,98 1,98",
+  triangle: "50,2 99,98 1,98",
+  star: "50,2 61,38 98,38 68,60 79,96 50,74 21,96 32,60 2,38 39,38",
+};
+const PATHS: Record<string, { body: string; rim?: string }> = {
+  cylinder: { body: "M1,12 C1,2 99,2 99,12 L99,88 C99,98 1,98 1,88 Z", rim: "M1,12 C1,22 99,22 99,12" },
+  document: { body: "M1,2 H99 V84 Q75,70 50,84 T1,84 Z" },
+  cloud: { body: "M25,80 C8,80 3,55 20,50 C15,30 40,20 52,32 C60,15 90,22 88,45 C100,50 98,80 80,80 Z" },
+};
+
 export function ShapeNode({ id, data, selected }: NodeProps) {
-  const d = data as { text: string; shape: "rect" | "ellipse" | "diamond"; color: string };
+  const d = data as unknown as Look & { text: string; shape: string; color: string };
+  const stroke = d.stroke ?? "#a1a1aa";
+  const width = d.strokeWidth ?? 1.5;
+  const dash = d.dashed ? "6 4" : undefined;
+  const fillOpacity = d.fillOpacity ?? 1;
+  const polygon = POLYGONS[d.shape];
+  const path = PATHS[d.shape];
+  const line = { stroke, strokeWidth: width, strokeDasharray: dash, vectorEffect: "non-scaling-stroke" as const };
+
   return (
     <div className="relative h-full w-full">
-      <NodeResizer isVisible={selected} minWidth={60} minHeight={40} />
-      {d.shape === "diamond" ? (
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <polygon
-            points="50,1 99,50 50,99 1,50"
-            fill={d.color}
-            stroke="#a1a1aa"
-            strokeWidth="1.5"
-            vectorEffect="non-scaling-stroke"
-          />
+      <NodeResizer isVisible={selected && !d.locked} minWidth={60} minHeight={40} />
+      {polygon || path ? (
+        <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {polygon ? (
+            <polygon points={polygon} fill={d.color} fillOpacity={fillOpacity} {...line} />
+          ) : (
+            <>
+              <path d={path.body} fill={d.color} fillOpacity={fillOpacity} {...line} />
+              {path.rim && <path d={path.rim} fill="none" {...line} />}
+            </>
+          )}
         </svg>
       ) : (
         <div
-          className="absolute inset-0 border-[1.5px] border-[#a1a1aa]"
-          style={{ background: d.color, borderRadius: d.shape === "ellipse" ? "50%" : 8 }}
+          className="absolute inset-0"
+          style={{
+            background: hexToRgba(d.color, fillOpacity),
+            borderRadius: d.shape === "ellipse" ? "50%" : d.radius ?? 8,
+            borderStyle: d.dashed ? "dashed" : "solid",
+            borderWidth: width,
+            borderColor: stroke,
+          }}
         />
       )}
       <div className="absolute inset-0 flex items-center justify-center p-3 text-center text-[13px] text-[#1a1a1a]">
-        <EditableText id={id} text={d.text} className="text-center" />
+        <div className="w-full" style={textStyle(d)}>
+          <EditableText id={id} text={d.text} className="text-center" />
+        </div>
       </div>
       <AllHandles />
     </div>
@@ -346,6 +379,85 @@ export function TableNode({ id, data, selected }: NodeProps) {
         </button>
       </div>
       <AllHandles />
+    </div>
+  );
+}
+
+export function ImageNode({ data, selected }: NodeProps) {
+  const d = data as { src: string; alt?: string; locked?: boolean };
+  return (
+    <div className={`relative h-full w-full ${ring(selected)}`}>
+      <NodeResizer isVisible={selected && !d.locked} keepAspectRatio minWidth={40} minHeight={40} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={d.src} alt={d.alt ?? ""} draggable={false} className="h-full w-full select-none object-contain" />
+      <AllHandles />
+    </div>
+  );
+}
+
+export function StampNode({ data, selected }: NodeProps) {
+  const d = data as unknown as Look & { emoji: string };
+  return (
+    <div className={`select-none leading-none ${ring(selected)}`} style={{ fontSize: d.fontSize ?? 48 }}>
+      {d.emoji}
+      <AllHandles />
+    </div>
+  );
+}
+
+export function LinkNode({ id, data, selected }: NodeProps) {
+  const d = data as { url: string; title: string };
+  const update = useFreeStore((s) => s.update);
+  const href = safeUrl(d.url);
+  return (
+    <div className={`flex w-64 items-center gap-2 rounded-lg border border-[#e4e4e7] bg-white p-3 text-[13px] shadow-sm ${ring(selected)}`}>
+      <LinkIcon className="size-4 shrink-0 text-[#3b82f6]" />
+      <div className="min-w-0 flex-1">
+        <InlineEdit single value={d.title} onCommit={(title) => update(id, { title })} className="truncate font-medium text-[#1a1a1a]" />
+        <p className="truncate text-[11px] text-[#a1a1aa]">{d.url}</p>
+      </div>
+      {href && (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open link"
+          aria-label="Open link"
+          className="nodrag shrink-0 rounded p-1 text-[#71717a] hover:bg-[#f4f4f5] hover:text-[#1a1a1a]"
+        >
+          <ExternalLink className="size-4" />
+        </a>
+      )}
+      <AllHandles />
+    </div>
+  );
+}
+
+// A pen stroke or straight arrow. Points are in the stroke's own box so it can be resized.
+export function PenNode({ id, data, selected }: NodeProps) {
+  const d = data as { points: number[][]; vw: number; vh: number; color: string; width: number; arrow?: boolean; locked?: boolean };
+  return (
+    <div className={`h-full w-full ${selected ? "outline outline-1 outline-dashed outline-[#3b82f6]" : ""}`}>
+      <NodeResizer isVisible={selected && !d.locked} minWidth={8} minHeight={8} />
+      <svg className="h-full w-full overflow-visible" viewBox={`0 0 ${d.vw} ${d.vh}`} preserveAspectRatio="none">
+        {d.arrow && (
+          <defs>
+            <marker id={`head-${id}`} markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+              <path d="M0,0 L5,2.5 L0,5 Z" fill={d.color} />
+            </marker>
+          </defs>
+        )}
+        <polyline
+          points={d.points.map((p) => p.join(",")).join(" ")}
+          fill="none"
+          stroke={d.color}
+          strokeWidth={d.width}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          markerEnd={d.arrow ? `url(#head-${id})` : undefined}
+        />
+      </svg>
     </div>
   );
 }
