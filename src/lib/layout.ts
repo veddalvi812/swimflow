@@ -1,6 +1,7 @@
 import dagre from "@dagrejs/dagre";
 import type { SwimlaneDiagram } from "@/types/diagram";
 import type { Node, Edge } from "@xyflow/react";
+import { EDGE_KINDS } from "./look";
 import { DIRS, markUsed, newUsed, route, simplify, type Dir, type Pt, type Rect } from "./routing";
 import {
   LANE_HEADER_WIDTH,
@@ -177,7 +178,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
               ? { x: lane.x + across + (rowSize - w) / 2, y: (pos?.y ?? 0) - h / 2 + LANE_HEADER_HEIGHT }
               : { x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH, y: lane.y + across + (rowSize - h) / 2 };
           })(),
-      data: { label: node.label, nodeType: node.type, description: node.description },
+      data: { label: node.label, nodeType: node.type, description: node.description, fill: node.fill, dashed: node.dashed },
       style: { width: w, height: h },
     };
   });
@@ -240,6 +241,9 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
       markUsed(used, points);
     }
 
+    const kind = EDGE_KINDS[edge.type] ?? EDGE_KINDS.default;
+    const color = kind.color;
+
     return {
       id: edge.id,
       source: edge.from,
@@ -249,16 +253,18 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
       label: edge.label,
       type: points ? "routed" : "smoothstep",
       data: { points, via: edge.via },
-      animated: edge.type === "conditional",
+      animated: kind.dashed && !kind.color,
       style: {
-        stroke: edge.type === "exception" ? "#dc2626" : "var(--muted-foreground)",
+        stroke: color ?? "var(--muted-foreground)",
         strokeWidth: 1.5,
+        strokeDasharray: kind.dashed && kind.color ? "6 4" : undefined,
       },
-      labelStyle: { fontSize: 12, fontWeight: 500, fill: "var(--foreground)" },
-      labelBgStyle: { fill: "var(--background)", fillOpacity: 0.9 },
+      // Colored kinds label their line with a solid chip
+      labelStyle: { fontSize: 12, fontWeight: 500, fill: color ? "#ffffff" : "var(--foreground)" },
+      labelBgStyle: color ? { fill: color } : { fill: "var(--background)", fillOpacity: 0.9 },
       labelBgPadding: [6, 3] as [number, number],
       labelBgBorderRadius: 4,
-      markerEnd: { type: "arrowclosed" as const, color: "var(--muted-foreground)" },
+      markerEnd: { type: "arrowclosed" as const, color: color ?? "var(--muted-foreground)" },
     } as Edge;
   });
 

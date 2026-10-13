@@ -6,6 +6,7 @@ import { Copy, MessageSquare, Trash2 } from "lucide-react";
 import { useFreeStore, isFreeId } from "@/store/free-store";
 import type { NodeType } from "@/types/diagram";
 import { NODE_TYPE_LABELS } from "../PropertiesPanel";
+import { STEP_FILLS } from "@/lib/look";
 import { FormatBar } from "./FormatBar";
 import { useDiagramStore } from "@/store/diagram-store";
 import { useBoardCtx } from "@/store/board-ctx";
@@ -15,7 +16,8 @@ import { useUi } from "@/store/ui";
 // color swatches (stickies and shapes), duplicate (free objects), and delete.
 export function withToolbar(Inner: ComponentType<NodeProps>) {
   return function WithToolbar(props: NodeProps) {
-    const { id, selected, type } = props;
+    const { id, selected, type, data } = props;
+    const step = data as { fill?: string; dashed?: boolean };
     const [hover, setHover] = useState(false);
     const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
     // A short delay lets the pointer cross the gap between the node and its toolbar.
@@ -60,6 +62,29 @@ export function withToolbar(Inner: ComponentType<NodeProps>) {
                     <option key={v} value={v}>{l}</option>
                   ))}
                 </select>
+              )}
+              {!free && selected && (
+                <>
+                  <span className="mx-0.5 h-4 w-px bg-white/20" />
+                  {STEP_FILLS.map((c) => (
+                    <button
+                      key={c}
+                      aria-label={`Fill ${c}`}
+                      onClick={() => useDiagramStore.getState().updateNode(id, { fill: c === "#ffffff" ? undefined : c })}
+                      className={`size-4 rounded-full border border-white/30 ${(step.fill ?? "#ffffff") === c ? "ring-2 ring-white ring-offset-1 ring-offset-[#1f1f23]" : ""}`}
+                      style={{ background: c }}
+                    />
+                  ))}
+                  <button
+                    title="Dashed outline (automated or system step)"
+                    aria-label="Dashed outline"
+                    aria-pressed={!!step.dashed}
+                    onClick={() => useDiagramStore.getState().updateNode(id, { dashed: !step.dashed || undefined })}
+                    className={`${btn} ${step.dashed ? "bg-white/20 text-white" : ""}`}
+                  >
+                    <span className="w-4 border-t-2 border-dashed border-current" />
+                  </button>
+                </>
               )}
               {canComment && (
                 <button title="Comment" aria-label="Comment" onClick={comment} className={btn}>

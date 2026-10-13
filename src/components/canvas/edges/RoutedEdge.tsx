@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { BaseEdge, EdgeLabelRenderer, useReactFlow, type EdgeProps } from "@xyflow/react";
+import { BaseEdge, EdgeLabelRenderer, useReactFlow, useStore, type EdgeProps } from "@xyflow/react";
 import { useDiagramStore } from "@/store/diagram-store";
+import { EDGE_KINDS } from "@/lib/look";
+import type { EdgeType } from "@/types/diagram";
 
 type Pt = [number, number];
 
@@ -46,6 +48,8 @@ export function RoutedEdge({
 }: EdgeProps) {
   const selected = useDiagramStore((s) => s.selectedEdgeId === id);
   const { screenToFlowPosition } = useReactFlow();
+  const zoom = useStore((s) => s.transform[2]);
+  const kindNow = useDiagramStore((s) => s.diagram.edges.find((e) => e.id === id)?.type ?? "default");
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   // The latest pointer position, kept outside React state so a quick release still commits it.
   const latest = useRef<{ x: number; y: number } | null>(null);
@@ -73,6 +77,23 @@ export function RoutedEdge({
       />
       {selected && (
         <EdgeLabelRenderer>
+          <div
+            className="nodrag nopan absolute flex items-center gap-1 rounded-lg bg-[#1f1f23] p-1 shadow-lg"
+            style={{ transform: `translate(-50%, -100%) translate(${dot.x}px, ${dot.y - 14 / zoom}px) scale(${1 / zoom})`, transformOrigin: "50% 100%", pointerEvents: "all" }}
+          >
+            {(Object.entries(EDGE_KINDS) as [EdgeType, (typeof EDGE_KINDS)[EdgeType]][]).map(([k, v]) => (
+              <button
+                key={k}
+                title={v.label}
+                aria-label={v.label}
+                onClick={() => useDiagramStore.getState().updateEdge(id, { type: k })}
+                className={`flex h-6 items-center rounded px-1.5 text-[11px] font-medium text-white ${kindNow === k ? "ring-2 ring-white" : "opacity-80 hover:opacity-100"}`}
+                style={{ background: v.color ?? "#71717a" }}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             title="Drag to steer this connector. Double-click to reset."

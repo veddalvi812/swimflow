@@ -3,6 +3,7 @@
 import type { NodeProps } from "@xyflow/react";
 import { EditableLabel } from "./EditableLabel";
 import { AllHandles } from "./Handles";
+import { safeColor } from "@/lib/look";
 
 export function StartEndNode({ id, data, selected }: NodeProps) {
   return (
@@ -11,8 +12,9 @@ export function StartEndNode({ id, data, selected }: NodeProps) {
         selected ? "ring-2 ring-[var(--primary)]/30" : ""
       }`}
       style={{
-        backgroundColor: "var(--foreground)",
-        color: "var(--background)",
+        backgroundColor: safeColor((data as { fill?: string }).fill) ?? "var(--foreground)",
+        color: safeColor((data as { fill?: string }).fill) ? "#1a1a1a" : "var(--background)",
+        ...((data as { dashed?: boolean }).dashed ? { outline: "2px dashed #3b82f6", outlineOffset: 2 } : {}),
       }}
     >
       <AllHandles />

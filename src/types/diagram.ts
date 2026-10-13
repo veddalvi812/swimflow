@@ -8,7 +8,7 @@ export type NodeType =
   | "document"
   | "datastore";
 
-export type EdgeType = "default" | "conditional" | "exception";
+export type EdgeType = "default" | "conditional" | "exception" | "approve" | "reject" | "sendback" | "notify";
 
 export type Orientation = "horizontal" | "vertical";
 
@@ -42,6 +42,8 @@ export interface DiagramNode {
   label: string;
   lane: string;
   description?: string;
+  fill?: string; // background color of the step
+  dashed?: boolean; // dashed outline, for automated or system steps
   pos?: { x: number; y: number }; // set by dragging: along the flow it's absolute, across it's the offset inside the lane; otherwise auto-laid out
 }
 

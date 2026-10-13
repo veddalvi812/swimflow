@@ -3,6 +3,7 @@
 import type { NodeProps } from "@xyflow/react";
 import { EditableLabel } from "./EditableLabel";
 import { AllHandles } from "./Handles";
+import { safeColor } from "@/lib/look";
 
 export function DecisionNode({ id, data, selected }: NodeProps) {
   return (
@@ -10,8 +11,9 @@ export function DecisionNode({ id, data, selected }: NodeProps) {
       <svg viewBox="0 0 80 80" className="absolute inset-0" width={80} height={80}>
         <polygon
           points="40,4 76,40 40,76 4,40"
-          fill="#ffffff"
-          stroke={selected ? "#3b82f6" : "#a1a1aa"}
+          fill={safeColor((data as { fill?: string }).fill) ?? "#ffffff"}
+          stroke={selected || (data as { dashed?: boolean }).dashed ? "#3b82f6" : "#a1a1aa"}
+          strokeDasharray={(data as { dashed?: boolean }).dashed ? "5 3" : undefined}
           strokeWidth={selected ? 2 : 1.5}
         />
       </svg>

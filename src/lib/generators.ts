@@ -84,8 +84,8 @@ Schema:
   "title": "string",
   "orientation": "{orientation}",
   "lanes": [{ "id": "string", "label": "string", "color": "string (hex)" }],
-  "nodes": [{ "id": "string", "type": "start|end|process|decision|subprocess", "label": "string", "lane": "string (lane id)" }],
-  "edges": [{ "id": "string", "from": "string (node id)", "to": "string (node id)", "label": "string (optional)", "type": "default|conditional" }]
+  "nodes": [{ "id": "string", "type": "start|end|process|decision|subprocess", "label": "string", "lane": "string (lane id)", "dashed": "true for automated/system steps such as SAP or API calls (optional)", "fill": "hex color (optional)" }],
+  "edges": [{ "id": "string", "from": "string (node id)", "to": "string (node id)", "label": "string (optional)", "type": "default|conditional|approve|reject|sendback|notify" }]
 }
 
 Rules:
@@ -93,6 +93,7 @@ Rules:
 - A node may have several incoming and outgoing edges (splits and joins). Add one edge per path; never force a single path
 - Every diagram must have exactly one "start" node and at least one "end" node
 - Decision nodes must have at least 2 outgoing edges with labels (e.g. "Yes"/"No")
+- Edge types: "approve" and "reject" for the outcomes of an approval decision, "sendback" for returning work to an earlier step, "notify" for notifications, "conditional" for other branches, otherwise "default"
 - Every node's "lane" must reference a valid lane id
 - Edge "from"/"to" must reference valid node ids
 - Use lowercase-kebab-case for all ids

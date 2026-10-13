@@ -4,7 +4,8 @@ import { useDiagramStore } from "@/store/diagram-store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { X, Trash2, Plus, GripVertical } from "lucide-react";
-import type { NodeType } from "@/types/diagram";
+import type { EdgeType, NodeType } from "@/types/diagram";
+import { EDGE_KINDS } from "@/lib/look";
 
 export const NODE_TYPE_LABELS: Record<NodeType, string> = {
   start: "Start",
@@ -183,13 +184,14 @@ function EdgeProperties() {
           <select
             value={edge.type}
             onChange={(e) =>
-              updateEdge(edge.id, { type: e.target.value as "default" | "conditional" | "exception" })
+              updateEdge(edge.id, { type: e.target.value as EdgeType })
             }
             className="h-8 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 text-sm outline-none focus:border-[var(--border-focus)]"
           >
             <option value="default">Default</option>
-            <option value="conditional">Conditional</option>
-            <option value="exception">Exception</option>
+            {Object.entries(EDGE_KINDS).filter(([k]) => k !== "default").map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
           </select>
         </Field>
       </div>
