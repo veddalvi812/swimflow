@@ -108,6 +108,7 @@ interface FreeStore {
   setTool: (t: Tool | null) => void;
   place: (pos: { x: number; y: number }) => void;
   addFlowchart: (spec: FlowSpec, pos: { x: number; y: number }) => void;
+  addBlock: (type: string, data: Record<string, unknown>, pos: { x: number; y: number }) => void;
   applyNodeChanges: (c: NodeChange[]) => void;
   applyEdgeChanges: (c: EdgeChange[]) => void;
   update: (id: string, patch: Record<string, unknown>) => void;
@@ -175,6 +176,12 @@ export const useFreeStore = create<FreeStore>((set, get) => {
       height: d.h,
     });
     set({ nodes: [...nodes.map((n) => ({ ...n, selected: false })), { ...node, selected: true }], tool: null });
+  },
+
+  addBlock: (type, data, pos) => {
+    save();
+    const node = hydrate({ id: newId("f"), type, position: { x: pos.x - 300, y: pos.y - 120 }, data });
+    set({ nodes: [...get().nodes.map((n) => ({ ...n, selected: false })), { ...node, selected: true }], tool: null });
   },
 
   addFlowchart: (spec, pos) => {

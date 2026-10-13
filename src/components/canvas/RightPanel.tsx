@@ -3,11 +3,10 @@
 import { useMemo, useState } from "react";
 import { Copy, Trash2 } from "lucide-react";
 import { useDiagramStore } from "@/store/diagram-store";
-import { useFreeStore, snapshotOf, STICKY_COLORS, uid, type KanbanCol } from "@/store/free-store";
-import { useReactFlow } from "@xyflow/react";
-import { FLOW_PROMPT, parseFlow } from "@/lib/flowchart";
+import { useFreeStore, snapshotOf, STICKY_COLORS } from "@/store/free-store";
 import { applyBoardJSON } from "@/lib/board-json";
-import { PromptPanel } from "./PromptPanel";
+import { MakeWizard } from "./MakeWizard";
+import { BLOCK_SPECS } from "@/lib/generators";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { Button } from "@/components/ui/button";
 
@@ -15,82 +14,13 @@ const card =
   "pointer-events-auto flex flex-col gap-3 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3 shadow-md";
 const maxH = { maxHeight: "calc(100vh - 170px)" };
 
-type Json = Record<string, unknown>;
-const str = (v: unknown, d = "") => (typeof v === "string" ? v : d);
-const arr = (v: unknown): Json[] => (Array.isArray(v) ? (v as Json[]) : []);
-
-// Smart blocks that take AI-generated JSON: prompt, the list key, and a normalizer for pasted data.
-const BLOCKS: Record<string, { label: string; prompt: string; key: string; replace: string; normalize: (p: Json) => Json }> = {
-  kanban: {
-    label: "Kanban board",
-    key: "columns",
-    replace: "Replace columns",
-    prompt: `Generate a kanban board as JSON for: "{describe your project}"
-
-Return only this structure:
-{
-  "title": "...",
-  "columns": [
-    { "id": "col-1", "title": "To do",
-      "cards": [ { "id": "c1", "text": "..." } ] }
-  ]
-}`,
-    normalize: (p) => ({
-      columns: arr(p.columns).map((c): KanbanCol => ({
-        id: str(c.id, uid()),
-        title: str(c.title, "Column"),
-        cards: arr(c.cards).map((k) => ({ id: str(k.id, uid()), text: str(k.text) })),
-      })),
-    }),
-  },
-  timeline: {
-    label: "Timeline",
-    key: "items",
-    replace: "Replace items",
-    prompt: `Generate a timeline as JSON for: "{describe your project}"
-
-Return only this structure, in chronological order:
-{
-  "title": "...",
-  "items": [
-    { "id": "t1", "date": "Jan 2025", "text": "..." }
-  ]
-}`,
-    normalize: (p) => ({
-      items: arr(p.items).map((i) => ({ id: str(i.id, uid()), date: str(i.date), text: str(i.text) })),
-    }),
-  },
-  table: {
-    label: "Table",
-    key: "rows",
-    replace: "Replace table",
-    prompt: `Generate a table as JSON for: "{describe what it should contain}"
-
-Return only this structure:
-{
-  "title": "...",
-  "headers": ["Column A", "Column B"],
-  "rows": [
-    ["cell", "cell"]
-  ]
-}`,
-    normalize: (p) => {
-      const headers = (Array.isArray(p.headers) ? p.headers : []).map((h) => str(h));
-      const rows = (Array.isArray(p.rows) ? (p.rows as unknown[][]) : []).map((r) =>
-        headers.map((_, i) => str(Array.isArray(r) ? r[i] : "")),
-      );
-      return { headers: headers.length ? headers : ["Column"], rows };
-    },
-  },
-};
-
 function BlockProperties({ id, kind }: { id: string; kind: string }) {
   const node = useFreeStore((s) => s.nodes.find((n) => n.id === id));
   const update = useFreeStore((s) => s.update);
   const removeSelected = useFreeStore((s) => s.removeSelected);
   const [paste, setPaste] = useState("");
   const [err, setErr] = useState("");
-  const cfg = BLOCKS[kind];
+  const cfg = BLOCK_SPECS[kind];
   if (!node) return null;
   const d = node.data as { title: string };
 
@@ -190,44 +120,6 @@ function FreeProperties({ id }: { id: string }) {
   );
 }
 
-function FlowchartPanel() {
-  const { screenToFlowPosition } = useReactFlow();
-  const [paste, setPaste] = useState("");
-  const [err, setErr] = useState("");
-
-  const add = () => {
-    try {
-      const spec = parseFlow(paste);
-      useFreeStore.getState().addFlowchart(spec, screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }));
-      setPaste("");
-      setErr("");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Invalid JSON");
-    }
-  };
-
-  return (
-    <div className={card} style={maxH}>
-      <h3 className="text-sm font-semibold">AI flowchart</h3>
-      <p className="text-xs text-[var(--muted-foreground)]">
-        Copy the prompt, give it to any AI, paste the JSON back. You get real shapes you can edit.
-      </p>
-      <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => navigator.clipboard.writeText(FLOW_PROMPT)}>
-        <Copy className="size-3.5" /> Copy AI prompt
-      </Button>
-      <textarea
-        value={paste}
-        onChange={(e) => setPaste(e.target.value)}
-        placeholder="Paste JSON here"
-        rows={8}
-        className="w-full resize-none rounded-md border border-[var(--border)] bg-[var(--background)] p-2 font-mono text-[11px] outline-none focus:border-[var(--border-focus)]"
-      />
-      {err && <p className="text-xs text-[var(--error)]">{err}</p>}
-      <Button size="sm" onClick={add} disabled={!paste.trim()}>Add to canvas</Button>
-    </div>
-  );
-}
-
 function JsonPanel() {
   const diagram = useDiagramStore((s) => s.diagram);
   const setDiagram = useDiagramStore((s) => s.setDiagram);
@@ -276,7 +168,7 @@ function JsonPanel() {
 }
 
 export function RightPanel() {
-  const [tab, setTab] = useState<"props" | "json" | "ai" | "flow">("props");
+  const [tab, setTab] = useState<"props" | "json" | "ai">("props");
   const freeSelected = useFreeStore((s) => s.nodes.find((n) => n.selected));
   const freeSelectedId = freeSelected?.id;
 
@@ -296,11 +188,14 @@ export function RightPanel() {
       <div className="pointer-events-auto flex gap-1 rounded-lg bg-[var(--surface)] p-1">
         {tabBtn("props", "Properties")}
         {tabBtn("json", "JSON")}
-        {tabBtn("ai", "AI")}
-        {tabBtn("flow", "Flowchart")}
+        {tabBtn("ai", "Make with AI")}
       </div>
-      {tab === "json" ? <JsonPanel /> : tab === "ai" ? <PromptPanel /> : tab === "flow" ? <FlowchartPanel /> : freeSelectedId ? (
-        freeSelected?.type && BLOCKS[freeSelected.type] ? <BlockProperties id={freeSelectedId} kind={freeSelected.type} /> : <FreeProperties id={freeSelectedId} />
+      {tab === "json" ? <JsonPanel /> : tab === "ai" ? (
+        <div className={card} style={maxH}>
+          <MakeWizard compact />
+        </div>
+      ) : freeSelectedId ? (
+        freeSelected?.type && BLOCK_SPECS[freeSelected.type] ? <BlockProperties id={freeSelectedId} kind={freeSelected.type} /> : <FreeProperties id={freeSelectedId} />
       ) : <PropertiesPanel />}
     </div>
   );

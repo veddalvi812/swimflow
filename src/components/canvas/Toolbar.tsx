@@ -94,8 +94,8 @@ export function Toolbar({ onCloud, extra }: { onCloud?: () => void; extra?: Reac
 
       <div className="mx-1 h-5 w-px bg-[var(--border)]" />
 
-      <ToolbarBtn icon={Plus} label="Add Node" onClick={handleAddNode} />
-      <ToolbarBtn icon={LayoutDashboard} label="Auto Layout" onClick={relayout} />
+      <ToolbarBtn icon={Plus} label="Add a step to the first swimlane" onClick={handleAddNode} />
+      <ToolbarBtn icon={LayoutDashboard} label="Tidy the swimlane layout" onClick={relayout} />
 
       <div className="mx-1 h-5 w-px bg-[var(--border)]" />
 

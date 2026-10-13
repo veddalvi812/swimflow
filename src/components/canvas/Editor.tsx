@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useEffect } from "react";
+import { useCallback, useMemo, useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ReactFlow,
@@ -33,6 +33,7 @@ import { LaneNode } from "./nodes/LaneNode";
 import { Toolbar } from "./Toolbar";
 import { RightPanel } from "./RightPanel";
 import { ToolRail } from "./ToolRail";
+import { MakeWizard } from "./MakeWizard";
 import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode, TimelineNode, TableNode } from "./nodes/FreeNodes";
 import { useFreeStore, isFreeId } from "@/store/free-store";
 import { undo, redo } from "@/store/history";
@@ -64,6 +65,8 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
   const freeNodes = useFreeStore((s) => s.nodes);
   const freeEdges = useFreeStore((s) => s.edges);
   const tool = useFreeStore((s) => s.tool);
+  const boardEmpty = useDiagramStore((s) => s.diagram.lanes.length === 0 && s.diagram.nodes.length === 0) && freeNodes.length === 0;
+  const [welcomeClosed, setWelcomeClosed] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
@@ -227,7 +230,7 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
   }, [deleteNode, deleteEdge, readOnly]);
 
   return (
-    <div className={`${tool ? "tool-armed" : ""} ${readOnly ? "readonly" : ""}`} style={{ width: "100vw", height: "100vh", background: "var(--background)" }}>
+    <div className={`${tool ? "tool-armed" : ""} ${readOnly ? "readonly" : ""}`} style={{ position: "relative", width: "100vw", height: "100vh", background: "var(--background)" }}>
       <ReactFlow
         nodes={allNodes}
         edges={allEdges}
@@ -295,6 +298,14 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
           </>
         )}
       </ReactFlow>
+
+      {boardEmpty && !readOnly && !welcomeClosed && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
+          <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] p-6 shadow-xl">
+            <MakeWizard onBlank={() => setWelcomeClosed(true)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

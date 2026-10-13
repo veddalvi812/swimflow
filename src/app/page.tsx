@@ -51,18 +51,18 @@ export default function LandingPage() {
             {/* Badge */}
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#e4e4e7] bg-[#f4f4f5] px-4 py-1.5 text-sm text-[#71717a]">
               <span className="rounded-full bg-[#3b82f6] px-2 py-0.5 text-[11px] font-semibold text-white">New</span>
-              <span>Free swimlane diagram generator</span>
+              <span>A free whiteboard for processes and plans</span>
             </div>
 
             <h1 className="mx-auto max-w-4xl text-[clamp(2.5rem,7vw,4.5rem)] font-medium leading-[1] tracking-[-0.03em]">
-              Swimlane diagrams,{" "}
+              Describe it.{" "}
               <br className="hidden sm:block" />
-              generated from words.
+              Any AI draws it.
             </h1>
 
             <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-[#71717a]">
-              Describe your process in plain text. Copy a structured prompt to any AI.
-              Paste the JSON back. SwimFlow renders and lets you edit it on an infinite canvas.
+              Tell SwimFlow what you&apos;re making. Copy the prompt to ChatGPT, Claude, or Gemini, paste the answer back,
+              and edit swimlanes, flowcharts, kanban boards, timelines, and tables on one canvas.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">

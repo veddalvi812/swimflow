@@ -10,9 +10,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SwimFlow — Swimlane Diagram Generator & Editor",
+  title: "SwimFlow — A free whiteboard where any AI draws your process",
   description:
-    "Generate and edit swimlane diagrams from prompts. Free, open to everyone.",
+    "Describe what you're making, let any AI draw it, then edit swimlanes, flowcharts, kanban boards, timelines, and tables on one canvas. Free.",
 };
 
 export default function RootLayout({

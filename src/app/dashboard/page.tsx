@@ -9,18 +9,11 @@ import {
   createBoard, createProject, deleteBoard, deleteProject, listBoards, listProjects, listShared, updateBoard,
   type BoardMeta, type Project,
 } from "@/lib/cloud";
-import { SAMPLE_DIAGRAM } from "@/lib/constants";
+import { SAMPLE_DIAGRAM, BLANK_DIAGRAM } from "@/lib/constants";
 import type { SwimlaneDiagram } from "@/types/diagram";
 
 type View = "home" | "starred" | "shared" | string; // string = project id
 
-const BLANK: SwimlaneDiagram = {
-  title: "Untitled board",
-  orientation: "horizontal",
-  lanes: [],
-  nodes: [],
-  edges: [],
-};
 
 export default function DashboardPage() {
   const { user, loading, signOut } = useRequireAuth();
@@ -135,7 +128,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <button onClick={() => newBoard(SAMPLE_DIAGRAM)} className="text-sm text-[#71717a] hover:text-[#1a1a1a]">Start from sample</button>
             <button
-              onClick={() => newBoard(BLANK)}
+              onClick={() => newBoard(BLANK_DIAGRAM)}
               className="flex items-center gap-1.5 rounded-full bg-[#1a1a1a] px-5 py-2 text-sm font-medium text-white hover:bg-black"
             >
               <Plus className="size-4" /> New board

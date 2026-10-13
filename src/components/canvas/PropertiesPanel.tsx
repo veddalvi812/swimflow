@@ -222,12 +222,12 @@ function DiagramProperties() {
 
   return (
     <>
-      <h3 className="text-sm font-semibold">Diagram</h3>
+      <h3 className="text-sm font-semibold">Board</h3>
 
       <Separator />
 
       <div className="flex flex-col gap-3">
-        <Field label="Title">
+        <Field label="Name">
           <TextInput
             value={diagram.title}
             onChange={updateTitle}
@@ -238,11 +238,17 @@ function DiagramProperties() {
       <Separator />
 
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Lanes</h3>
+        <h3 className="text-sm font-semibold">Swimlanes</h3>
         <Button variant="ghost" size="icon-xs" onClick={addLane}>
           <Plus className="size-3.5" />
         </Button>
       </div>
+
+      {diagram.lanes.length === 0 && (
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Swimlanes show who does what. Add one to start a process diagram, or use Make with AI.
+        </p>
+      )}
 
       <div className="flex flex-col gap-2">
         {diagram.lanes.map((lane) => (

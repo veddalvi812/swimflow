@@ -1,3 +1,5 @@
+import type { SwimlaneDiagram } from "@/types/diagram";
+
 export const LANE_COLORS = [
   "#3b82f6", // blue
   "#22c55e", // green
@@ -45,4 +47,13 @@ export const SAMPLE_DIAGRAM = {
     { id: "e7", from: "setup-workspace", to: "orientation", type: "default" as const },
     { id: "e8", from: "orientation", to: "end", type: "default" as const },
   ],
+};
+
+// A board with nothing on it: no lanes, no steps.
+export const BLANK_DIAGRAM: SwimlaneDiagram = {
+  title: "Untitled board",
+  orientation: "horizontal",
+  lanes: [],
+  nodes: [],
+  edges: [],
 };
