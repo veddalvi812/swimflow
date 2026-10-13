@@ -2,9 +2,11 @@
 
 import type { NodeProps } from "@xyflow/react";
 import { LANE_HEADER_HEIGHT, LANE_HEADER_WIDTH } from "@/lib/constants";
+import { useDiagramStore } from "@/store/diagram-store";
 
 export function LaneNode({ data }: NodeProps) {
-  const { label, color, laneWidth, laneHeight, orientation } = data as {
+  const { laneId, label, color, laneWidth, laneHeight, orientation } = data as {
+    laneId: string;
     label: string;
     color: string;
     laneWidth: number;
@@ -29,8 +31,19 @@ export function LaneNode({ data }: NodeProps) {
         className={`absolute left-0 top-0 flex items-center justify-center ${vertical ? "border-b" : "border-r"} border-[var(--border)]`}
         style={{ ...header, backgroundColor: color, opacity: 0.15 }}
       />
+      {/* The header is the lane's handle: click to select it, drag it onto another lane to reorder. */}
       <div
-        className="absolute left-0 top-0 flex items-center justify-center px-2"
+        draggable
+        title="Click to select, drag to reorder"
+        onClick={() => useDiagramStore.getState().selectLane(laneId)}
+        onDragStart={(e) => e.dataTransfer.setData("application/x-lane", laneId)}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          const from = e.dataTransfer.getData("application/x-lane");
+          const { diagram, moveLane } = useDiagramStore.getState();
+          if (from) moveLane(from, diagram.lanes.findIndex((l) => l.id === laneId));
+        }}
+        className="nopan nodrag pointer-events-auto absolute left-0 top-0 flex cursor-grab items-center justify-center px-2"
         style={header}
       >
         <span className="text-[13px] font-semibold select-none" style={{ color: "var(--foreground)" }}>

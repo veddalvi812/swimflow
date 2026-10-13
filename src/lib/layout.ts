@@ -119,6 +119,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     type: "lane",
     position: { x: lane.x, y: lane.y },
     data: {
+      laneId: lane.id,
       label: lane.label,
       color: lane.color,
       laneWidth: lane.width,

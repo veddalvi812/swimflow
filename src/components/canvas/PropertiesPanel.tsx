@@ -3,7 +3,7 @@
 import { useDiagramStore } from "@/store/diagram-store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, Trash2, Plus } from "lucide-react";
+import { X, Trash2, Plus, GripVertical } from "lucide-react";
 import type { NodeType } from "@/types/diagram";
 
 const NODE_TYPE_LABELS: Record<NodeType, string> = {
@@ -213,6 +213,65 @@ function EdgeProperties() {
   );
 }
 
+function LaneProperties() {
+  const diagram = useDiagramStore((s) => s.diagram);
+  const selectedLaneId = useDiagramStore((s) => s.selectedLaneId);
+  const updateLane = useDiagramStore((s) => s.updateLane);
+  const deleteLane = useDiagramStore((s) => s.deleteLane);
+  const moveLane = useDiagramStore((s) => s.moveLane);
+  const selectLane = useDiagramStore((s) => s.selectLane);
+
+  const index = diagram.lanes.findIndex((l) => l.id === selectedLaneId);
+  const lane = diagram.lanes[index];
+  if (!lane) return null;
+  const steps = diagram.nodes.filter((n) => n.lane === lane.id).length;
+  const vertical = diagram.orientation === "vertical";
+
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Swimlane</h3>
+        <Button variant="ghost" size="icon-xs" aria-label="Close" onClick={() => selectLane(null)}>
+          <X className="size-3.5" />
+        </Button>
+      </div>
+
+      <Separator />
+
+      <div className="flex flex-col gap-3">
+        <Field label="Name">
+          <TextInput value={lane.label} onChange={(label) => updateLane(lane.id, { label })} />
+        </Field>
+        <Field label="Color">
+          <input
+            type="color"
+            value={lane.color}
+            onChange={(e) => updateLane(lane.id, { color: e.target.value })}
+            className="h-8 w-full cursor-pointer rounded border border-[var(--border)] p-0"
+          />
+        </Field>
+        <Field label="Position">
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" className="flex-1" disabled={index === 0} onClick={() => moveLane(lane.id, index - 1)}>
+              {vertical ? "Move left" : "Move up"}
+            </Button>
+            <Button variant="secondary" size="sm" className="flex-1" disabled={index === diagram.lanes.length - 1} onClick={() => moveLane(lane.id, index + 1)}>
+              {vertical ? "Move right" : "Move down"}
+            </Button>
+          </div>
+        </Field>
+      </div>
+
+      <Separator />
+
+      <Button variant="destructive" size="sm" className="w-full gap-1.5" onClick={() => deleteLane(lane.id)}>
+        <Trash2 className="size-3.5" />
+        {steps > 0 ? `Delete lane and ${steps} step${steps === 1 ? "" : "s"}` : "Delete lane"}
+      </Button>
+    </>
+  );
+}
+
 function DiagramProperties() {
   const diagram = useDiagramStore((s) => s.diagram);
   const updateTitle = useDiagramStore((s) => s.updateTitle);
@@ -220,6 +279,8 @@ function DiagramProperties() {
   const updateLane = useDiagramStore((s) => s.updateLane);
   const addLane = useDiagramStore((s) => s.addLane);
   const deleteLane = useDiagramStore((s) => s.deleteLane);
+  const moveLane = useDiagramStore((s) => s.moveLane);
+  const selectLane = useDiagramStore((s) => s.selectLane);
 
   return (
     <>
@@ -270,8 +331,24 @@ function DiagramProperties() {
       )}
 
       <div className="flex flex-col gap-2">
-        {diagram.lanes.map((lane) => (
-          <div key={lane.id} className="flex items-center gap-2">
+        {diagram.lanes.map((lane, i) => (
+          <div
+            key={lane.id}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              const from = e.dataTransfer.getData("application/x-lane");
+              if (from) moveLane(from, i);
+            }}
+            className="flex items-center gap-1.5"
+          >
+            <span
+              draggable
+              title="Drag to reorder"
+              onDragStart={(e) => e.dataTransfer.setData("application/x-lane", lane.id)}
+              className="cursor-grab text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            >
+              <GripVertical className="size-4" />
+            </span>
             <input
               type="color"
               value={lane.color}
@@ -281,14 +358,15 @@ function DiagramProperties() {
             <input
               type="text"
               value={lane.label}
+              onFocus={() => selectLane(lane.id)}
               onChange={(e) => updateLane(lane.id, { label: e.target.value })}
-              className="h-7 flex-1 rounded border border-[var(--border)] bg-[var(--background)] px-2 text-xs outline-none focus:border-[var(--border-focus)]"
+              className="h-7 min-w-0 flex-1 rounded border border-[var(--border)] bg-[var(--background)] px-2 text-xs outline-none focus:border-[var(--border-focus)]"
             />
             <Button
               variant="ghost"
               size="icon-xs"
+              aria-label={`Delete ${lane.label}`}
               onClick={() => deleteLane(lane.id)}
-              disabled={diagram.lanes.length <= 1}
               className="shrink-0 text-[var(--muted-foreground)] hover:text-[var(--error)]"
             >
               <Trash2 className="size-3" />
@@ -304,7 +382,10 @@ export function PropertiesPanel() {
   const selectedNodeId = useDiagramStore((s) => s.selectedNodeId);
   const selectedEdgeId = useDiagramStore((s) => s.selectedEdgeId);
 
-  const hasSelection = selectedNodeId || selectedEdgeId;
+  const selectedLaneId = useDiagramStore((s) => s.selectedLaneId);
+  const laneExists = useDiagramStore((s) => s.diagram.lanes.some((l) => l.id === s.selectedLaneId));
+  const showLane = !!selectedLaneId && laneExists;
+  const hasSelection = selectedNodeId || selectedEdgeId || showLane;
 
   return (
     <div
@@ -313,6 +394,7 @@ export function PropertiesPanel() {
     >
       {selectedNodeId && <NodeProperties />}
       {selectedEdgeId && <EdgeProperties />}
+      {showLane && !selectedNodeId && !selectedEdgeId && <LaneProperties />}
       {!hasSelection && <DiagramProperties />}
     </div>
   );

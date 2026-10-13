@@ -15,6 +15,7 @@ interface DiagramStore {
   edges: Edge[];
   lanes: LaneBounds[];
   selectedNodeId: string | null;
+  selectedLaneId: string | null;
   selectedEdgeId: string | null;
   editingNodeId: string | null;
 
@@ -31,6 +32,8 @@ interface DiagramStore {
   setEdges: (edges: Edge[]) => void;
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
+  selectLane: (id: string | null) => void;
+  moveLane: (id: string, toIndex: number) => void;
   setEditingNode: (id: string | null) => void;
   relayout: () => void;
 
@@ -76,6 +79,7 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
   edges: initial.edges,
   lanes: initial.lanes,
   selectedNodeId: null,
+  selectedLaneId: null,
   selectedEdgeId: null,
   editingNodeId: null,
   _past: [],
@@ -126,8 +130,18 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
 
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
-  selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
-  selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null, editingNodeId: null }),
+  selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null, selectedLaneId: null }),
+  selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null, selectedLaneId: null, editingNodeId: null }),
+  selectLane: (id) => set({ selectedLaneId: id, selectedNodeId: null, selectedEdgeId: null, editingNodeId: null }),
+
+  moveLane: (id, toIndex) => {
+    const { diagram } = get();
+    const from = diagram.lanes.findIndex((l) => l.id === id);
+    if (from < 0 || from === toIndex) return;
+    const lanes = [...diagram.lanes];
+    lanes.splice(toIndex, 0, lanes.splice(from, 1)[0]);
+    set(commit(get, { ...diagram, lanes }));
+  },
   setEditingNode: (id) => set({ editingNodeId: id }),
 
   relayout: () => {
@@ -191,7 +205,6 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
 
   deleteLane: (id) => {
     const { diagram } = get();
-    if (diagram.lanes.length <= 1) return;
     const nodeIds = new Set(diagram.nodes.filter((n) => n.lane === id).map((n) => n.id));
     const updated = {
       ...diagram,
@@ -199,7 +212,7 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
       nodes: diagram.nodes.filter((n) => n.lane !== id),
       edges: diagram.edges.filter((e) => !nodeIds.has(e.from) && !nodeIds.has(e.to)),
     };
-    set(commit(get, updated));
+    set(commit(get, updated, { selectedLaneId: null }));
   },
 
   deleteNode: (id) => {

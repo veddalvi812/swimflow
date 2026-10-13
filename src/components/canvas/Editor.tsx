@@ -225,10 +225,11 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
         redo();
       }
       if (e.key === "Delete" || e.key === "Backspace") {
-        const { selectedNodeId, selectedEdgeId, editingNodeId } = useDiagramStore.getState();
+        const { selectedNodeId, selectedEdgeId, selectedLaneId, editingNodeId } = useDiagramStore.getState();
         if (editingNodeId) return;
         if (selectedNodeId) { e.preventDefault(); deleteNode(selectedNodeId); }
         else if (selectedEdgeId) { e.preventDefault(); deleteEdge(selectedEdgeId); }
+        else if (selectedLaneId) { e.preventDefault(); useDiagramStore.getState().deleteLane(selectedLaneId); }
       }
     };
     window.addEventListener("keydown", handler);
