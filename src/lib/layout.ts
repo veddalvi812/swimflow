@@ -178,7 +178,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
               ? { x: lane.x + across + (rowSize - w) / 2, y: (pos?.y ?? 0) - h / 2 + LANE_HEADER_HEIGHT }
               : { x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH, y: lane.y + across + (rowSize - h) / 2 };
           })(),
-      data: { label: node.label, nodeType: node.type, description: node.description, fill: node.fill, dashed: node.dashed },
+      data: { label: node.label, nodeType: node.type, description: node.description, fill: node.fill, dashed: node.dashed, stroke: node.stroke },
       style: { width: w, height: h },
     };
   });

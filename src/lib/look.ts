@@ -18,9 +18,11 @@ export const STEP_FILLS = ["#ffffff", "#dbeafe", "#dcfce7", "#fef9c3", "#fee2e2"
 export const safeColor = (c?: string) => (c && /^#[0-9a-f]{3,8}$/i.test(c) ? c : undefined);
 
 // Fill and outline for a step; dashed outlines mark automated or system steps.
-export function stepLook(d: { fill?: string; dashed?: boolean }): CSSProperties {
+export function stepLook(d: { fill?: string; dashed?: boolean; stroke?: string }): CSSProperties {
+  const color = d.stroke === "none" ? "transparent" : safeColor(d.stroke) ?? (d.dashed ? "#3b82f6" : undefined);
   return {
     background: safeColor(d.fill),
-    ...(d.dashed ? { borderStyle: "dashed", borderColor: "#3b82f6" } : {}),
+    ...(d.dashed ? { borderStyle: "dashed" } : {}),
+    ...(color ? { borderColor: color } : {}),
   };
 }

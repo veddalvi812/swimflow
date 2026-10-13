@@ -5,12 +5,11 @@ import {
   AlignCenter, AlignLeft, AlignRight, Bold, BringToFront, Copy, Italic, Link2, List, Lock, MessageSquare,
   MoreHorizontal, SendToBack, Shapes, Square, Strikethrough, Trash2, Unlock,
 } from "lucide-react";
-import { useFreeStore, STICKY_COLORS } from "@/store/free-store";
+import { useFreeStore } from "@/store/free-store";
+import { FillMenu, Pop as MenuPop, StrokeMenu, type FillMode, type StrokeMode } from "./menus";
 import { FONTS, SHAPES, type Look } from "@/lib/style";
 
-const FILLS = ["#ffffff", "#e4e4e7", ...STICKY_COLORS, "#fed7aa", "#fbcfe8"];
 const SIZES = [12, 14, 16, 18, 24, 32, 48, 64];
-const WIDTHS = [0, 1, 1.5, 2, 3, 4, 6];
 const ALIGNS = { left: AlignLeft, center: AlignCenter, right: AlignRight } as const;
 
 const btn = "flex h-7 min-w-7 items-center justify-center gap-1 rounded-md px-1 text-white/80 transition-colors hover:bg-white/15 hover:text-white";
@@ -48,7 +47,10 @@ export function FormatBar({
   const align = d.align ?? (type === "shape" ? "center" : "left");
   const Align = ALIGNS[align];
   const locked = !!d.locked;
-  const fillOpts = type === "sticky" ? STICKY_COLORS : FILLS;
+  const opacity = d.fillOpacity ?? 1;
+  const fillMode: FillMode = opacity === 0 ? "none" : opacity < 1 ? "transparent" : "fill";
+  const width = d.strokeWidth ?? 1.5;
+  const strokeMode: StrokeMode = width === 0 ? "none" : d.dashed ? "dashed" : "solid";
 
   return (
     <div className="nodrag relative flex items-center gap-0.5 rounded-xl bg-[#1f1f23] p-1 shadow-lg">
@@ -77,36 +79,19 @@ export function FormatBar({
 
       {hasFill && (
         <div className="relative">
-          <button title="Fill color" aria-label="Fill color" onClick={() => toggle("fill")} className={`${btn} ${open === "fill" ? on : ""}`}>
-            <span className="size-4 rounded-full border border-white/40" style={{ background: String(d.color ?? "#fff") }} />
+          <button title="Fill" aria-label="Fill color" onClick={() => toggle("fill")} className={`${btn} ${open === "fill" ? on : ""}`}>
+            <span className="size-4 rounded-full border border-white/40" style={{ background: fillMode === "none" ? "transparent" : String(d.color ?? "#fff"), opacity: fillMode === "transparent" ? 0.5 : 1 }} />
           </button>
           {open === "fill" && (
-            <Pop wide>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {fillOpts.map((c) => (
-                  <button
-                    key={c}
-                    aria-label={`Fill ${c}`}
-                    onClick={() => set({ color: c })}
-                    className={`size-5 rounded-full border border-white/30 ${d.color === c ? "ring-2 ring-white ring-offset-1 ring-offset-[#1f1f23]" : ""}`}
-                    style={{ background: c }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  aria-label="Custom fill"
-                  value={String(d.color ?? "#ffffff").length === 7 ? String(d.color) : "#ffffff"}
-                  onChange={(e) => set({ color: e.target.value })}
-                  className="h-5 w-7 cursor-pointer rounded border-0 bg-transparent p-0"
-                />
-              </div>
-              {type === "shape" && (
-                <label className="flex items-center gap-2">
-                  Opacity
-                  <input type="range" min={0} max={1} step={0.05} value={d.fillOpacity ?? 1} onChange={(e) => set({ fillOpacity: Number(e.target.value) })} className="flex-1" />
-                </label>
-              )}
-            </Pop>
+            <MenuPop>
+              <FillMenu
+                color={String(d.color ?? "")}
+                mode={fillMode}
+                modes={type === "shape" ? ["fill", "transparent", "none"] : ["fill"]}
+                onColor={(color) => set({ color, ...(type === "shape" && opacity === 0 ? { fillOpacity: 1 } : {}) })}
+                onMode={(m) => set({ fillOpacity: m === "fill" ? 1 : m === "transparent" ? 0.5 : 0 })}
+              />
+            </MenuPop>
           )}
         </div>
       )}
@@ -114,28 +99,25 @@ export function FormatBar({
       {type === "shape" && (
         <div className="relative">
           <button title="Border" aria-label="Border" onClick={() => toggle("border")} className={`${btn} ${open === "border" ? on : ""}`}>
-            <Square className="size-4" style={{ color: d.stroke ?? "#a1a1aa" }} />
+            <Square className="size-4" style={{ color: strokeMode === "none" ? "#ffffff55" : d.stroke ?? "#a1a1aa" }} strokeDasharray={strokeMode === "dashed" ? "3 2" : undefined} />
           </button>
           {open === "border" && (
-            <Pop wide>
-              <div className="flex items-center gap-2">
-                <input type="color" aria-label="Border color" value={d.stroke ?? "#a1a1aa"} onChange={(e) => set({ stroke: e.target.value })} className="h-6 w-8 cursor-pointer border-0 bg-transparent p-0" />
-                <select aria-label="Border width" value={d.strokeWidth ?? 1.5} onChange={(e) => set({ strokeWidth: Number(e.target.value) })} className={field}>
-                  {WIDTHS.map((w) => (
-                    <option key={w} value={w}>{w === 0 ? "None" : `${w} px`}</option>
-                  ))}
-                </select>
-                <label className="flex items-center gap-1">
-                  <input type="checkbox" checked={!!d.dashed} onChange={(e) => set({ dashed: e.target.checked })} /> Dashed
-                </label>
-              </div>
+            <MenuPop>
+              <StrokeMenu
+                color={d.stroke ?? "#a1a1aa"}
+                mode={strokeMode}
+                width={width}
+                onColor={(stroke) => set({ stroke, ...(strokeMode === "none" ? { strokeWidth: 1.5 } : {}) })}
+                onMode={(m) => set(m === "none" ? { strokeWidth: 0 } : { dashed: m === "dashed", strokeWidth: width || 1.5 })}
+                onWidth={(strokeWidth) => set({ strokeWidth })}
+              />
               {d.shape === "rect" && (
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 border-t border-white/10 pt-2">
                   Corners
                   <input type="range" min={0} max={40} value={d.radius ?? 8} onChange={(e) => set({ radius: Number(e.target.value) })} className="flex-1" />
                 </label>
               )}
-            </Pop>
+            </MenuPop>
           )}
         </div>
       )}

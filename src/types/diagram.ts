@@ -44,6 +44,7 @@ export interface DiagramNode {
   description?: string;
   fill?: string; // background color of the step
   dashed?: boolean; // dashed outline, for automated or system steps
+  stroke?: string; // outline color, or "none" for no outline
   pos?: { x: number; y: number }; // set by dragging: along the flow it's absolute, across it's the offset inside the lane; otherwise auto-laid out
 }
 

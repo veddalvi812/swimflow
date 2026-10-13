@@ -6,14 +6,15 @@ import { AllHandles } from "./Handles";
 import { safeColor } from "@/lib/look";
 
 export function DecisionNode({ id, data, selected }: NodeProps) {
+  const look = data as { dashed?: boolean; stroke?: string };
   return (
     <div className="relative flex items-center justify-center" style={{ width: 80, height: 80 }}>
       <svg viewBox="0 0 80 80" className="absolute inset-0" width={80} height={80}>
         <polygon
           points="40,4 76,40 40,76 4,40"
           fill={safeColor((data as { fill?: string }).fill) ?? "#ffffff"}
-          stroke={selected || (data as { dashed?: boolean }).dashed ? "#3b82f6" : "#a1a1aa"}
-          strokeDasharray={(data as { dashed?: boolean }).dashed ? "5 3" : undefined}
+          stroke={selected ? "#3b82f6" : look.stroke === "none" ? "transparent" : safeColor(look.stroke) ?? (look.dashed ? "#3b82f6" : "#a1a1aa")}
+          strokeDasharray={look.dashed ? "5 3" : undefined}
           strokeWidth={selected ? 2 : 1.5}
         />
       </svg>
