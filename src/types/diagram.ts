@@ -30,6 +30,7 @@ export interface Lane {
   label: string;
   color: string;
   pool?: string;
+  size?: number; // set by hand; otherwise the lane fits its steps
 }
 
 export interface DiagramNode {
@@ -38,6 +39,7 @@ export interface DiagramNode {
   label: string;
   lane: string;
   description?: string;
+  pos?: { x: number; y: number }; // set by dragging; otherwise auto-laid out
 }
 
 export interface DiagramEdge {

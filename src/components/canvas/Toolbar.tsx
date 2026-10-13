@@ -25,6 +25,7 @@ import {
 import { useReactFlow } from "@xyflow/react";
 import { boardJSON, applyBoardJSON, downloadText } from "@/lib/board-json";
 import { exportImage } from "@/lib/export-image";
+import { toast } from "@/store/ui";
 
 function ToolbarBtn({
   icon: Icon,
@@ -62,7 +63,7 @@ export function Toolbar({ onCloud, extra }: { onCloud?: () => void; extra?: Reac
   const rf = useReactFlow();
 
   const exportAs = (format: "png" | "pdf") =>
-    exportImage(rf.getNodes(), format, diagram.title).catch((e) => alert(e instanceof Error ? e.message : "Export failed"));
+    exportImage(rf.getNodes(), format, diagram.title).catch((e) => toast(e instanceof Error ? e.message : "Export failed", "error"));
 
   const handleAddNode = () => {
     const firstLane = diagram.lanes[0];
@@ -81,7 +82,7 @@ export function Toolbar({ onCloud, extra }: { onCloud?: () => void; extra?: Reac
       try {
         applyBoardJSON(await file.text());
       } catch {
-        alert("That file isn't a valid board JSON.");
+        toast("That file isn't a valid board JSON.", "error");
       }
     };
     input.click();

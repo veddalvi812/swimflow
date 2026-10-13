@@ -220,6 +220,7 @@ function LaneProperties() {
   const deleteLane = useDiagramStore((s) => s.deleteLane);
   const moveLane = useDiagramStore((s) => s.moveLane);
   const selectLane = useDiagramStore((s) => s.selectLane);
+  const insertLane = useDiagramStore((s) => s.insertLane);
 
   const index = diagram.lanes.findIndex((l) => l.id === selectedLaneId);
   const lane = diagram.lanes[index];
@@ -249,6 +250,31 @@ function LaneProperties() {
             onChange={(e) => updateLane(lane.id, { color: e.target.value })}
             className="h-8 w-full cursor-pointer rounded border border-[var(--border)] p-0"
           />
+        </Field>
+        <Field label={vertical ? "Width (px)" : "Height (px)"}>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min={80}
+              value={lane.size ?? ""}
+              placeholder="Fit to steps"
+              onChange={(e) => updateLane(lane.id, { size: e.target.value ? Math.max(80, Number(e.target.value)) : undefined })}
+              className="h-8 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-2.5 text-sm outline-none focus:border-[var(--border-focus)]"
+            />
+            <Button variant="secondary" size="sm" disabled={lane.size === undefined} onClick={() => updateLane(lane.id, { size: undefined })}>
+              Auto
+            </Button>
+          </div>
+        </Field>
+        <Field label="Add a lane">
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" className="flex-1" onClick={() => insertLane(index)}>
+              {vertical ? "Before (left)" : "Before (above)"}
+            </Button>
+            <Button variant="secondary" size="sm" className="flex-1" onClick={() => insertLane(index + 1)}>
+              {vertical ? "After (right)" : "After (below)"}
+            </Button>
+          </div>
         </Field>
         <Field label="Position">
           <div className="flex gap-2">

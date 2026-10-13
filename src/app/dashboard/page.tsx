@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Folder, Home, Link2, Users, LogOut, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { confirmDialog, promptDialog, toast } from "@/store/ui";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import {
   createBoard, createProject, deleteBoard, deleteProject, listBoards, listProjects, listShared, updateBoard,
@@ -54,13 +55,13 @@ export default function DashboardPage() {
     if (id) router.push(`/board/${id}`);
   };
   const addProject = async () => {
-    const name = window.prompt("Project name");
+    const name = await promptDialog({ title: "New project", placeholder: "Project name", confirmLabel: "Create" });
     if (!name?.trim()) return;
     const p = await createProject(name.trim());
     if (p) { await refresh(); setView(p.id); }
   };
   const removeProject = async (p: Project) => {
-    if (!window.confirm(`Delete "${p.name}" and all its boards?`)) return;
+    if (!(await confirmDialog({ title: `Delete "${p.name}"?`, message: "This also deletes every board inside it.", confirmLabel: "Delete project", danger: true }))) return;
     await deleteProject(p.id);
     setView("home");
     refresh();
@@ -72,10 +73,10 @@ export default function DashboardPage() {
   const share = async (b: BoardMeta) => {
     if (!b.is_public) await patch(b.id, { is_public: true });
     await navigator.clipboard.writeText(`${window.location.origin}/view/${b.id}`);
-    window.alert("Public link copied");
+    toast("Public link copied");
   };
   const remove = async (b: BoardMeta) => {
-    if (!window.confirm(`Delete "${b.title}"?`)) return;
+    if (!(await confirmDialog({ title: `Delete "${b.title}"?`, message: "You can't undo this.", confirmLabel: "Delete board", danger: true }))) return;
     await deleteBoard(b.id);
     setBoards(await listBoards());
   };
@@ -163,7 +164,7 @@ export default function DashboardPage() {
                     <Star className={`size-4 ${b.starred ? "fill-[#f59e0b] text-[#f59e0b]" : ""}`} />
                   </button>
                   <button
-                    onClick={() => { const t = window.prompt("Rename board", b.title); if (t?.trim()) patch(b.id, { title: t.trim() }); }}
+                    onClick={async () => { const t = await promptDialog({ title: "Rename board", defaultValue: b.title }); if (t?.trim()) patch(b.id, { title: t.trim() }); }}
                     aria-label="Rename" className="hover:text-[#1a1a1a]"
                   ><Pencil className="size-4" /></button>
                   <button onClick={() => share(b)} aria-label="Copy public link" className={b.is_public ? "text-[#3b82f6]" : "hover:text-[#1a1a1a]"}>

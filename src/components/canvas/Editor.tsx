@@ -17,6 +17,7 @@ import {
   type NodeChange,
   type EdgeChange,
   type OnNodesChange,
+  type OnNodeDrag,
   type OnEdgesChange,
   type OnConnect,
   ReactFlowProvider,
@@ -177,6 +178,29 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
     [selectEdge]
   );
 
+  // Dropping a swimlane step remembers its spot and moves it into the lane it landed in.
+  const handleNodeDragStop = useCallback<OnNodeDrag>((_, __, dragged) => {
+    for (const n of dragged) {
+      if (!isFreeId(n.id) && !n.id.startsWith("lane-")) useDiagramStore.getState().moveStep(n.id, n.position);
+    }
+  }, []);
+
+  // Double-click empty space inside a lane to add a step there.
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (readOnly || !(e.target as HTMLElement).closest(".react-flow__pane")) return;
+      const { lanes, diagram, addNode } = useDiagramStore.getState();
+      if (!lanes.length) return;
+      const at = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const vertical = diagram.orientation === "vertical";
+      const lane = lanes.find((l) =>
+        vertical ? at.x >= l.x && at.x < l.x + l.width && at.y >= l.y && at.y < l.y + l.height : at.y >= l.y && at.y < l.y + l.height && at.x >= l.x && at.x < l.x + l.width
+      );
+      if (lane) addNode(lane.id, "process", at);
+    },
+    [readOnly, screenToFlowPosition]
+  );
+
   const handlePaneClick = useCallback(
     (e: React.MouseEvent) => {
       if (placeTool(e)) return;
@@ -237,7 +261,8 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
   }, [deleteNode, deleteEdge, readOnly]);
 
   return (
-    <div className={`${tool ? "tool-armed" : ""} ${readOnly ? "readonly" : ""}`} style={{ position: "relative", width: "100vw", height: "100vh", background: "var(--background)" }}>
+    <div onDoubleClick={handleDoubleClick}
+      className={`${tool ? "tool-armed" : ""} ${readOnly ? "readonly" : ""}`} style={{ position: "relative", width: "100vw", height: "100vh", background: "var(--background)" }}>
       <ReactFlow
         nodes={allNodes}
         edges={allEdges}
@@ -250,6 +275,8 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
         onEdgesChange={handleEdgesChange}
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
+        onNodeDragStop={handleNodeDragStop}
+        zoomOnDoubleClick={false}
         onConnect={handleConnect}
         onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}

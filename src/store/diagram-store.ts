@@ -3,7 +3,8 @@
 import { create } from "zustand";
 import type { Node, Edge } from "@xyflow/react";
 import type { SwimlaneDiagram, DiagramNode, DiagramEdge, Lane, Orientation } from "@/types/diagram";
-import { layoutDiagram, type LaneBounds } from "@/lib/layout";
+import { layoutDiagram, nodeSize, type LaneBounds } from "@/lib/layout";
+import { LANE_HEADER_HEIGHT, LANE_HEADER_WIDTH } from "@/lib/constants";
 import { SAMPLE_DIAGRAM, LANE_COLORS } from "@/lib/constants";
 import { record, registerHistory } from "./history";
 
@@ -37,7 +38,9 @@ interface DiagramStore {
   setEditingNode: (id: string | null) => void;
   relayout: () => void;
 
-  addNode: (lane: string, type?: DiagramNode["type"]) => void;
+  addNode: (lane: string, type?: DiagramNode["type"], at?: { x: number; y: number }) => void;
+  moveStep: (id: string, position: { x: number; y: number }) => void;
+  insertLane: (index: number) => void;
   addEdge: (from: string, to: string) => void;
   updateNode: (id: string, patch: Partial<DiagramNode>) => void;
   updateEdge: (id: string, patch: Partial<DiagramEdge>) => void;
@@ -144,18 +147,51 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
   },
   setEditingNode: (id) => set({ editingNodeId: id }),
 
+  // Tidy: forget hand-placed positions and lay everything out again.
   relayout: () => {
     const { diagram } = get();
-    const { nodes, edges, lanes } = applyLayout(diagram);
-    set({ nodes, edges, lanes });
+    set(commit(get, { ...diagram, nodes: diagram.nodes.map(({ pos: _pos, ...n }) => n) }));
   },
 
-  addNode: (lane, type = "process") => {
+  addNode: (lane, type = "process", at) => {
     const { diagram } = get();
     const id = `n-${Date.now()}`;
-    const node: DiagramNode = { id, type, label: "New Step", lane };
+    const { w, h } = nodeSize(type);
+    const node: DiagramNode = { id, type, label: "New Step", lane, ...(at ? { pos: { x: at.x - w / 2, y: at.y - h / 2 } } : {}) };
     const updated = { ...diagram, nodes: [...diagram.nodes, node] };
     set(commit(get, updated, { selectedNodeId: id, editingNodeId: id }));
+  },
+
+  // A step dropped somewhere: remember where, and move it into the lane it landed in.
+  moveStep: (id, position) => {
+    const { diagram, lanes } = get();
+    const step = diagram.nodes.find((n) => n.id === id);
+    if (!step || lanes.length === 0) return;
+    const vertical = diagram.orientation === "vertical";
+    const { w, h } = nodeSize(step.type);
+    const center = vertical ? position.x + w / 2 : position.y + h / 2;
+    const start = (l: LaneBounds) => (vertical ? l.x : l.y);
+    const span = (l: LaneBounds) => (vertical ? l.width : l.height);
+    const lane =
+      lanes.find((l) => center >= start(l) && center < start(l) + span(l)) ??
+      lanes.reduce((best, l) =>
+        Math.abs(center - (start(l) + span(l) / 2)) < Math.abs(center - (start(best) + span(best) / 2)) ? l : best
+      );
+    const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+    const pos = vertical
+      ? { x: clamp(position.x, lane.x, lane.x + lane.width - w), y: Math.max(position.y, LANE_HEADER_HEIGHT) }
+      : { x: Math.max(position.x, LANE_HEADER_WIDTH), y: clamp(position.y, lane.y, lane.y + lane.height - h) };
+    if (step.lane === lane.id && step.pos && step.pos.x === pos.x && step.pos.y === pos.y) return;
+    set(commit(get, { ...diagram, nodes: diagram.nodes.map((n) => (n.id === id ? { ...n, lane: lane.id, pos } : n)) }));
+  },
+
+  insertLane: (index) => {
+    const { diagram } = get();
+    const id = `lane-${Date.now()}`;
+    const color = LANE_COLORS[diagram.lanes.length % LANE_COLORS.length];
+    const lanes = [...diagram.lanes];
+    lanes.splice(index, 0, { id, label: `Lane ${diagram.lanes.length + 1}`, color });
+    set(commit(get, { ...diagram, lanes }, { selectedLaneId: id }));
   },
 
   addEdge: (from, to) => {

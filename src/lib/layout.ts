@@ -22,7 +22,7 @@ export interface LaneBounds {
   height: number;
 }
 
-function nodeSize(type: string): { w: number; h: number } {
+export function nodeSize(type: string): { w: number; h: number } {
   if (type === "decision") return { w: DECISION_SIZE, h: DECISION_SIZE };
   if (type === "start" || type === "end") return { w: 100, h: 40 };
   return { w: NODE_WIDTH, h: NODE_HEIGHT };
@@ -68,6 +68,14 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     if (pos) flowEnd = Math.max(flowEnd, vertical ? pos.y + h / 2 : pos.x + w / 2);
   }
 
+  // Steps placed by hand can sit past the auto layout; make the lanes long enough for them
+  let manualEnd = 0;
+  for (const node of diagram.nodes) {
+    if (!node.pos) continue;
+    const { w, h } = nodeSize(node.type);
+    manualEnd = Math.max(manualEnd, (vertical ? node.pos.y + h : node.pos.x + w) + LANE_PADDING);
+  }
+
   // Each lane's size across the flow, from the spread of its nodes
   const laneBounds: LaneBounds[] = [];
   let cursor = 0;
@@ -89,7 +97,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     // since nodes sit centered in the column.
     const widest = Math.max(0, ...laneNodes.map((n) => nodeSize(n.type).w));
     const content = vertical ? widest : min === Infinity ? 0 : max - min;
-    const size = Math.max(vertical ? LANE_MIN_WIDTH : LANE_MIN_HEIGHT, content + LANE_PADDING * 2);
+    const size = laneDef.size ?? Math.max(vertical ? LANE_MIN_WIDTH : LANE_MIN_HEIGHT, content + LANE_PADDING * 2);
     const length = flowEnd + (vertical ? LANE_HEADER_HEIGHT : LANE_HEADER_WIDTH) + LANE_PADDING * 2;
 
     laneBounds.push({
@@ -106,10 +114,10 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
 
   // Normalize lane lengths to the longest
   if (vertical) {
-    const maxH = Math.max(...laneBounds.map((l) => l.height), 400);
+    const maxH = Math.max(...laneBounds.map((l) => l.height), 400, manualEnd);
     for (const lb of laneBounds) lb.height = maxH;
   } else {
-    const maxW = Math.max(...laneBounds.map((l) => l.width), 800);
+    const maxW = Math.max(...laneBounds.map((l) => l.width), 800, manualEnd);
     for (const lb of laneBounds) lb.width = maxW;
   }
 
@@ -141,9 +149,11 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     return {
       id: node.id,
       type: node.type === "start" || node.type === "end" ? "startEnd" : node.type,
-      position: vertical
-        ? { x: lane.x + lane.width / 2 - w / 2, y: (pos?.y ?? 0) - h / 2 + LANE_HEADER_HEIGHT }
-        : { x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH, y: lane.y + lane.height / 2 - h / 2 },
+      position: node.pos
+        ? node.pos
+        : vertical
+          ? { x: lane.x + lane.width / 2 - w / 2, y: (pos?.y ?? 0) - h / 2 + LANE_HEADER_HEIGHT }
+          : { x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH, y: lane.y + lane.height / 2 - h / 2 },
       data: { label: node.label, nodeType: node.type, description: node.description },
       style: { width: w, height: h },
     };
