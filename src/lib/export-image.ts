@@ -1,5 +1,5 @@
 import { getNodesBounds, getViewportForBounds, type Node } from "@xyflow/react";
-import { toPng, toSvg } from "html-to-image";
+import { toJpeg, toPng, toSvg } from "html-to-image";
 import { download } from "./board-json";
 
 const PAD = 40;
@@ -31,4 +31,22 @@ export async function exportImage(nodes: Node[], format: "png" | "pdf" | "svg", 
   const pdf = new jsPDF({ orientation: width > height ? "l" : "p", unit: "px", format: [width, height], hotfixes: ["px_scaling"] });
   pdf.addImage(png, "PNG", 0, 0, width, height);
   pdf.save(`${file}.pdf`);
+}
+
+// A small preview of the whole board for the dashboard. Returns null if there is nothing to show.
+export async function makeThumbnail(nodes: Node[]): Promise<string | null> {
+  const viewport = document.querySelector<HTMLElement>(".react-flow__viewport");
+  if (!viewport || !nodes.length) return null;
+  const W = 360;
+  const H = 220;
+  const bounds = getNodesBounds(nodes);
+  const { x, y, zoom } = getViewportForBounds(bounds, W, H, 0.02, 1, 0.08);
+  return toJpeg(viewport, {
+    backgroundColor: "#ffffff",
+    width: W,
+    height: H,
+    quality: 0.7,
+    pixelRatio: 1,
+    style: { width: `${W}px`, height: `${H}px`, transform: `translate(${x}px, ${y}px) scale(${zoom})` },
+  });
 }

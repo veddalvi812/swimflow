@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { loadBoard } from "@/lib/cloud";
+import { joinBoard } from "@/lib/realtime";
 import { useDiagramStore } from "@/store/diagram-store";
 import { useFreeStore } from "@/store/free-store";
 
@@ -28,6 +29,26 @@ export default function ViewPage() {
       }
     });
   }, [id, setDiagram]);
+
+  // Watch the board live: when the owner saves, show the new version.
+  useEffect(() => {
+    if (status !== "found") return;
+    let timer: ReturnType<typeof setTimeout>;
+    const session = joinBoard(id, { name: "Viewer" }, () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const b = await loadBoard(id);
+        if (!b) return;
+        const { free, ...d } = b.content;
+        useDiagramStore.getState().applyRemote(d);
+        useFreeStore.getState().load(free);
+      }, 300);
+    });
+    return () => {
+      clearTimeout(timer);
+      session.leave();
+    };
+  }, [status, id]);
 
   if (status === "loading") {
     return (

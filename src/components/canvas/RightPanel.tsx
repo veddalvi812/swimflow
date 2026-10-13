@@ -7,8 +7,10 @@ import { useDiagramStore } from "@/store/diagram-store";
 import { useFreeStore, snapshotOf } from "@/store/free-store";
 import { applyBoardJSON, downloadText } from "@/lib/board-json";
 import { canExport, toCsv, toMarkdown } from "@/lib/block-export";
-import { toast } from "@/store/ui";
+import { toast, useUi } from "@/store/ui";
 import { MakeWizard } from "./MakeWizard";
+import { CommentsPanel } from "./CommentsPanel";
+import { useBoardCtx } from "@/store/board-ctx";
 import { BLOCK_SPECS } from "@/lib/generators";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { Button } from "@/components/ui/button";
@@ -132,7 +134,7 @@ function JsonPanel() {
 }
 
 export function RightPanel() {
-  const [tab, setTab] = useState<"props" | "json" | "ai">("props");
+  const [tab, setTab] = useState<"props" | "json" | "ai" | "comments">("props");
   const allFree = useFreeStore((s) => s.nodes);
   const selectedNodes = useMemo(() => allFree.filter((n) => n.selected), [allFree]);
   const selectedEdge = useFreeStore((s) => s.edges.find((e) => e.selected));
@@ -143,6 +145,17 @@ export function RightPanel() {
   useEffect(() => {
     if (selectionKey !== "|") setTab("props");
   }, [selectionKey]);
+
+  // Other parts of the app (the comment button on an object) can ask for a tab.
+  const requestTab = useUi((u) => u.requestTab);
+  useEffect(() => {
+    if (!requestTab) return;
+    setTab(requestTab as typeof tab);
+    useUi.setState({ requestTab: null });
+  }, [requestTab]);
+
+  const boardId = useBoardCtx((b) => b.boardId);
+  const open = useBoardCtx((b) => b.comments.filter((c) => !c.resolved).length);
 
   const tabBtn = (t: typeof tab, label: string) => (
     <button
@@ -168,8 +181,9 @@ export function RightPanel() {
         {tabBtn("props", "Properties")}
         {tabBtn("json", "JSON")}
         {tabBtn("ai", "Make with AI")}
+        {boardId && tabBtn("comments", open ? `Comments ${open}` : "Comments")}
       </div>
-      {tab === "json" ? <JsonPanel /> : tab === "ai" ? (
+      {tab === "comments" && boardId ? <CommentsPanel /> : tab === "json" ? <JsonPanel /> : tab === "ai" ? (
         <div className={card} style={maxH}>
           <MakeWizard compact />
         </div>

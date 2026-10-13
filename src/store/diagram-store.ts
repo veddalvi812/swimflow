@@ -29,6 +29,7 @@ interface DiagramStore {
   canRedo: () => boolean;
 
   setDiagram: (diagram: SwimlaneDiagram) => void;
+  applyRemote: (diagram: SwimlaneDiagram) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   selectNode: (id: string | null) => void;
@@ -129,6 +130,12 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
 
   setDiagram: (diagram) => {
     set(commit(get, diagram, { selectedNodeId: null, selectedEdgeId: null, editingNodeId: null }));
+  },
+
+  // Someone else saved: show their version without adding it to this person's undo history.
+  applyRemote: (diagram) => {
+    const { nodes, edges, lanes } = applyLayout(diagram);
+    set({ diagram, nodes, edges, lanes, _past: [], _future: [], selectedNodeId: null, selectedEdgeId: null, selectedLaneId: null, editingNodeId: null });
   },
 
   setNodes: (nodes) => set({ nodes }),

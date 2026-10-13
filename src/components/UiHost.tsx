@@ -32,13 +32,25 @@ export function UiHost() {
             onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => {
               e.preventDefault();
-              close(dialog.kind === "confirm" ? true : input.current?.value ?? "");
+              if (dialog.kind === "confirm") close(true);
+              else if (dialog.kind === "choose") close(String(new FormData(e.currentTarget).get("choice") ?? dialog.defaultValue ?? ""));
+              else close(input.current?.value ?? "");
             }}
             onKeyDown={(e) => e.key === "Escape" && close(dialog.kind === "confirm" ? false : null)}
             className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-[#e4e4e7] bg-white p-5 text-[#1a1a1a] shadow-xl"
           >
             <h2 className="text-base font-medium">{dialog.title}</h2>
             {dialog.message && <p className="text-sm text-[#71717a]">{dialog.message}</p>}
+            {dialog.kind === "choose" && (
+              <div className="flex max-h-60 flex-col gap-1 overflow-y-auto">
+                {dialog.options?.map((o) => (
+                  <label key={o.value} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-[#f4f4f5]">
+                    <input type="radio" name="choice" value={o.value} defaultChecked={o.value === dialog.defaultValue} />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+            )}
             {dialog.kind === "prompt" && (
               <input
                 ref={input}

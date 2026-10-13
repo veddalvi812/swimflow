@@ -86,3 +86,39 @@ language sql security definer set search_path = public, auth as $$
 $$;
 revoke all on function public.delete_my_account() from public;
 grant execute on function public.delete_my_account() to authenticated;
+
+
+-- Board previews shown on the dashboard.
+alter table public.boards add column if not exists thumbnail text;
+
+
+-- Comments on a board, optionally pinned to one object (node_id).
+create table if not exists public.comments (
+  id uuid primary key default gen_random_uuid(),
+  board_id uuid not null references public.boards(id) on delete cascade,
+  node_id text,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  author text not null default '',
+  body text not null,
+  resolved boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists comments_board_id_idx on public.comments(board_id);
+alter table public.comments enable row level security;
+
+-- If you can see the board (yours, public, or shared with you), you can read its comments.
+drop policy if exists "read comments" on public.comments;
+create policy "read comments" on public.comments for select
+  using (exists (select 1 from public.boards b where b.id = board_id));
+
+drop policy if exists "add comments" on public.comments;
+create policy "add comments" on public.comments for insert
+  with check (auth.uid() = user_id and exists (select 1 from public.boards b where b.id = board_id));
+
+drop policy if exists "resolve or delete comments" on public.comments;
+create policy "resolve or delete comments" on public.comments for update
+  using (auth.uid() = user_id or public.is_board_owner(board_id));
+
+drop policy if exists "remove comments" on public.comments;
+create policy "remove comments" on public.comments for delete
+  using (auth.uid() = user_id or public.is_board_owner(board_id));

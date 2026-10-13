@@ -2,9 +2,11 @@
 
 import { useRef, useState, type ComponentType } from "react";
 import { NodeToolbar, Position, type NodeProps } from "@xyflow/react";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, MessageSquare, Trash2 } from "lucide-react";
 import { useFreeStore, isFreeId, STICKY_COLORS } from "@/store/free-store";
 import { useDiagramStore } from "@/store/diagram-store";
+import { useBoardCtx } from "@/store/board-ctx";
+import { useUi } from "@/store/ui";
 
 const SHAPE_COLORS = ["#ffffff", ...STICKY_COLORS];
 
@@ -25,12 +27,19 @@ export function withToolbar(Inner: ComponentType<NodeProps>) {
     };
 
     const free = isFreeId(id);
+    const canComment = useBoardCtx((b) => !!b.boardId) && free;
+    const open = useBoardCtx((b) => b.comments.filter((c) => c.node_id === id && !c.resolved).length);
     const colors = type === "sticky" ? STICKY_COLORS : type === "shape" ? SHAPE_COLORS : null;
     const color = (data as { color?: string }).color;
     const btn = "flex size-7 items-center justify-center rounded-md text-white/80 transition-colors hover:bg-white/15 hover:text-white";
 
     return (
-      <div className="h-full w-full" onMouseEnter={enter} onMouseLeave={leave}>
+      <div className="relative h-full w-full" onMouseEnter={enter} onMouseLeave={leave}>
+        {open > 0 && (
+          <span className="pointer-events-none absolute -right-2 -top-2 z-10 flex size-5 items-center justify-center rounded-full bg-[#3b82f6] text-[11px] font-medium text-white shadow">
+            {open}
+          </span>
+        )}
         <NodeToolbar isVisible={hover || selected} position={Position.Top} offset={10}>
           <div
             className="nodrag flex items-center gap-0.5 rounded-lg bg-[#1f1f23] p-1 shadow-lg"
@@ -50,6 +59,19 @@ export function withToolbar(Inner: ComponentType<NodeProps>) {
                 ))}
                 <span className="mx-1 h-4 w-px bg-white/20" />
               </>
+            )}
+            {canComment && (
+              <button
+                title="Comment"
+                aria-label="Comment"
+                onClick={() => {
+                  useFreeStore.setState((s) => ({ nodes: s.nodes.map((n) => ({ ...n, selected: n.id === id })) }));
+                  useUi.setState({ requestTab: "comments" });
+                }}
+                className={btn}
+              >
+                <MessageSquare className="size-4" />
+              </button>
             )}
             {free && (
               <button title="Duplicate" aria-label="Duplicate" onClick={() => useFreeStore.getState().duplicate(id)} className={btn}>

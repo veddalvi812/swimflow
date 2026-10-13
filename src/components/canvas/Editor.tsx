@@ -37,7 +37,10 @@ import { ToolRail } from "./ToolRail";
 import { DrawLayer } from "./DrawLayer";
 import { SearchBox } from "./SearchBox";
 import { AccountMenu } from "./AccountMenu";
+import { Cursors } from "./Cursors";
+import { usePresence } from "@/store/presence";
 import { useView, restoreView } from "@/store/view-store";
+import { makeThumbnail } from "@/lib/export-image";
 import { TOOL_KEYS } from "@/lib/hotkeys";
 import { addImageFile } from "@/lib/images";
 import { useUi } from "@/store/ui";
@@ -73,13 +76,25 @@ const nodeTypes = {
   pen: withToolbar(PenNode),
 };
 
-function EditorCanvas({ backHref, readOnly: viewOnly, shareSlot }: { backHref: string; readOnly: boolean; shareSlot?: React.ReactNode }) {
+function EditorCanvas({
+  backHref,
+  readOnly: viewOnly,
+  shareSlot,
+  onThumbnail,
+}: {
+  backHref: string;
+  readOnly: boolean;
+  shareSlot?: React.ReactNode;
+  onThumbnail?: (make: () => Promise<string | null>) => void;
+}) {
   const present = useView((v) => v.present);
   const background = useView((v) => v.background);
   const snap = useView((v) => v.snap);
   const minimap = useView((v) => v.minimap);
   const readOnly = viewOnly || present;
   useEffect(() => restoreView(), []);
+  const { getNodes } = useReactFlow();
+  useEffect(() => onThumbnail?.(() => makeThumbnail(getNodes())), [onThumbnail, getNodes]);
   const storeNodes = useDiagramStore((s) => s.nodes);
   const storeEdges = useDiagramStore((s) => s.edges);
   const selectNode = useDiagramStore((s) => s.selectNode);
@@ -366,6 +381,13 @@ function EditorCanvas({ backHref, readOnly: viewOnly, shareSlot }: { backHref: s
 
   return (
     <div onDoubleClick={handleDoubleClick}
+      onMouseMove={(e) => {
+        const send = usePresence.getState().sendCursor;
+        if (send) {
+          const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+          send(p.x, p.y);
+        }
+      }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
       className={`${tool ? "tool-armed" : ""} ${readOnly ? "readonly" : ""}`} style={{ position: "relative", width: "100vw", height: "100vh", background: "var(--background)" }}>
@@ -428,6 +450,8 @@ function EditorCanvas({ backHref, readOnly: viewOnly, shareSlot }: { backHref: s
           {!readOnly && <AccountMenu />}
         </Panel>
 
+        <Cursors />
+
         {!readOnly && <DrawLayer />}
 
         <Panel position="top-center" className="pointer-events-none mt-14">
@@ -482,15 +506,17 @@ export default function Editor({
   backHref = "/",
   readOnly = false,
   shareSlot,
+  onThumbnail,
 }: {
   backHref?: string;
   readOnly?: boolean;
   shareSlot?: React.ReactNode;
+  onThumbnail?: (make: () => Promise<string | null>) => void;
 }) {
   return (
     <TooltipProvider delay={300}>
       <ReactFlowProvider>
-        <EditorCanvas backHref={backHref} readOnly={readOnly} shareSlot={shareSlot} />
+        <EditorCanvas backHref={backHref} readOnly={readOnly} shareSlot={shareSlot} onThumbnail={onThumbnail} />
       </ReactFlowProvider>
     </TooltipProvider>
   );
