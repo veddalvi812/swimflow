@@ -36,6 +36,8 @@ import { RightPanel } from "./RightPanel";
 import { ToolRail } from "./ToolRail";
 import { DrawLayer } from "./DrawLayer";
 import { SearchBox } from "./SearchBox";
+import { AccountMenu } from "./AccountMenu";
+import { useView, restoreView } from "@/store/view-store";
 import { TOOL_KEYS } from "@/lib/hotkeys";
 import { addImageFile } from "@/lib/images";
 import { useUi } from "@/store/ui";
@@ -71,7 +73,13 @@ const nodeTypes = {
   pen: withToolbar(PenNode),
 };
 
-function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; readOnly: boolean; shareSlot?: React.ReactNode }) {
+function EditorCanvas({ backHref, readOnly: viewOnly, shareSlot }: { backHref: string; readOnly: boolean; shareSlot?: React.ReactNode }) {
+  const present = useView((v) => v.present);
+  const background = useView((v) => v.background);
+  const snap = useView((v) => v.snap);
+  const minimap = useView((v) => v.minimap);
+  const readOnly = viewOnly || present;
+  useEffect(() => restoreView(), []);
   const storeNodes = useDiagramStore((s) => s.nodes);
   const storeEdges = useDiagramStore((s) => s.edges);
   const selectNode = useDiagramStore((s) => s.selectNode);
@@ -287,12 +295,20 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
   );
 
   useEffect(() => {
+    if (!present) return;
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && useView.getState().set({ present: false });
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [present]);
+
+  useEffect(() => {
     if (readOnly) return;
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
       if (e.key === "Escape") {
+        useView.getState().set({ present: false });
         useFreeStore.getState().setTool(null);
         useUi.setState({ shortcuts: false, searching: false });
       }
@@ -367,6 +383,8 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
         onNodeDoubleClick={handleNodeDoubleClick}
         onNodeDragStop={handleNodeDragStop}
         zoomOnDoubleClick={false}
+        snapToGrid={snap}
+        snapGrid={[12, 12]}
         onConnect={handleConnect}
         onReconnect={(old, conn) => old.id.startsWith("fe-") && useFreeStore.getState().reconnect(old.id, conn)}
         onEdgeClick={handleEdgeClick}
@@ -377,8 +395,16 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{ type: "smoothstep" }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1.8} color="#d4d4d8" />
+        {background !== "blank" && (
+          <Background
+            variant={background === "lines" ? BackgroundVariant.Lines : BackgroundVariant.Dots}
+            gap={background === "lines" ? 40 : 24}
+            size={background === "lines" ? 1 : 1.8}
+            color={background === "lines" ? "#ececef" : "#d4d4d8"}
+          />
+        )}
 
+        {minimap && (
         <MiniMap
           position="bottom-right"
           style={{
@@ -389,8 +415,9 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
           maskColor="rgba(0,0,0,0.1)"
           nodeStrokeWidth={2}
         />
+        )}
 
-        <Panel position="top-left" className="pointer-events-auto">
+        <Panel position="top-left" className="pointer-events-auto flex items-center gap-2">
           <Link
             href={backHref}
             className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface)]"
@@ -398,6 +425,7 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="5" rx="1.5" fill="#60a5fa" /><rect x="3" y="10" width="18" height="5" rx="1.5" fill="#60a5fa" opacity="0.6" /><rect x="3" y="17" width="18" height="4" rx="1.5" fill="#60a5fa" opacity="0.3" /></svg>
             SwimFlow
           </Link>
+          {!readOnly && <AccountMenu />}
         </Panel>
 
         {!readOnly && <DrawLayer />}
@@ -408,9 +436,18 @@ function EditorCanvas({ backHref, readOnly, shareSlot }: { backHref: string; rea
 
         {readOnly ? (
           <Panel position="top-center" className="pointer-events-none">
-            <span className="rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-1 text-xs text-[var(--muted-foreground)] shadow-sm">
-              View only
-            </span>
+            {present ? (
+              <button
+                onClick={() => useView.getState().set({ present: false })}
+                className="pointer-events-auto rounded-full bg-[#1a1a1a]/85 px-3 py-1 text-xs text-white shadow-sm hover:bg-[#1a1a1a]"
+              >
+                Presenting. Press Esc or click to exit
+              </button>
+            ) : (
+              <span className="rounded-full border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-1 text-xs text-[var(--muted-foreground)] shadow-sm">
+                View only
+              </span>
+            )}
           </Panel>
         ) : (
           <>

@@ -17,6 +17,7 @@ export function ShareDialog({ boardId, isPublic }: { boardId: string; isPublic: 
   const [role, setRole] = useState<Member["role"]>("viewer");
   const [msg, setMsg] = useState("");
   const [copied, setCopied] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
 
   const refresh = useCallback(async () => setMembers(await listMembers(boardId)), [boardId]);
   useEffect(() => {
@@ -33,6 +34,13 @@ export function ShareDialog({ boardId, isPublic }: { boardId: string; isPublic: 
     await navigator.clipboard.writeText(`${window.location.origin}/view/${boardId}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const copyEmbed = async () => {
+    const src = `${window.location.origin}/view/${boardId}`;
+    await navigator.clipboard.writeText(`<iframe src="${src}" width="100%" height="520" style="border:0" title="SwimFlow board" loading="lazy"></iframe>`);
+    setEmbedCopied(true);
+    setTimeout(() => setEmbedCopied(false), 1500);
   };
 
   const invite = async () => {
@@ -83,6 +91,12 @@ export function ShareDialog({ boardId, isPublic }: { boardId: string; isPublic: 
                 </Button>
               </div>
             </div>
+
+            {pub && (
+              <button onClick={copyEmbed} className="self-start text-xs text-[#3b82f6] hover:underline">
+                {embedCopied ? "Embed code copied" : "Copy embed code for a website"}
+              </button>
+            )}
 
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium">Invite people</p>

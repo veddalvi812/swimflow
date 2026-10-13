@@ -77,3 +77,12 @@ create policy "members read boards" on public.boards for select
 drop policy if exists "editors update boards" on public.boards;
 create policy "editors update boards" on public.boards for update
   using (public.board_role(id) = 'editor') with check (public.board_role(id) = 'editor');
+
+
+-- Account: lets a signed-in user delete their own account (and, through cascades, their boards).
+create or replace function public.delete_my_account() returns void
+language sql security definer set search_path = public, auth as $$
+  delete from auth.users where id = auth.uid()
+$$;
+revoke all on function public.delete_my_account() from public;
+grant execute on function public.delete_my_account() to authenticated;

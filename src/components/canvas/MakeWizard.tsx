@@ -65,7 +65,7 @@ export function MakeWizard({ compact = false, onDone, onBlank }: { compact?: boo
 
   const title = !gen ? "What are we making today?" : step === "describe" ? `Tell me about your ${gen.noun}` : "Now paste what the AI gave you";
   const sub = !gen
-    ? "Pick a starting point. You can mix everything on one board later."
+    ? "Pick one. Copy a prompt to any AI, paste its answer back, and SwimFlow draws it for you."
     : step === "describe"
       ? "A sentence or two is plenty. Any AI can take it from there."
       : copied

@@ -5,7 +5,9 @@ import { Copy, Trash2 } from "lucide-react";
 import { FreeProperties, MultiProperties, EdgeProperties, ArrangeRow, card, maxH } from "./ObjectProperties";
 import { useDiagramStore } from "@/store/diagram-store";
 import { useFreeStore, snapshotOf } from "@/store/free-store";
-import { applyBoardJSON } from "@/lib/board-json";
+import { applyBoardJSON, downloadText } from "@/lib/board-json";
+import { canExport, toCsv, toMarkdown } from "@/lib/block-export";
+import { toast } from "@/store/ui";
 import { MakeWizard } from "./MakeWizard";
 import { BLOCK_SPECS } from "@/lib/generators";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -54,6 +56,29 @@ function BlockProperties({ id, kind }: { id: string; kind: string }) {
       />
       {err && <p className="text-xs text-[var(--error)]">{err}</p>}
       <Button size="sm" onClick={apply} disabled={!paste.trim()}>{cfg.replace}</Button>
+      {canExport(kind) && (
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex-1"
+            onClick={async () => {
+              await navigator.clipboard.writeText(toMarkdown(kind, node.data));
+              toast("Copied as Markdown");
+            }}
+          >
+            Copy Markdown
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex-1"
+            onClick={() => downloadText(toCsv(kind, node.data), `${d.title || kind}.csv`, "text/csv")}
+          >
+            Download CSV
+          </Button>
+        </div>
+      )}
       <ArrangeRow />
     </div>
   );

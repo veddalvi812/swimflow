@@ -148,3 +148,16 @@ export async function deleteBoard(id: string): Promise<boolean> {
   const { error } = await supabase.from("boards").delete().eq("id", id);
   return !error;
 }
+
+export async function exportAllBoards() {
+  const user = await me();
+  if (!supabase || !user) return [];
+  const { data } = await supabase.from("boards").select("id, title, content, updated_at").eq("user_id", user.id);
+  return data ?? [];
+}
+
+export async function deleteMyAccount(): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.rpc("delete_my_account");
+  return !error;
+}
