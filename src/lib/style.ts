@@ -5,6 +5,9 @@ export interface Look {
   fontSize?: number;
   bold?: boolean;
   italic?: boolean;
+  strike?: boolean;
+  font?: keyof typeof FONTS;
+  href?: string;
   align?: "left" | "center" | "right";
   textColor?: string;
   stroke?: string;
@@ -15,7 +18,16 @@ export interface Look {
   locked?: boolean;
 }
 
+export const FONTS = {
+  sans: { label: "Sans", css: undefined },
+  serif: { label: "Serif", css: "Georgia, 'Times New Roman', serif" },
+  mono: { label: "Mono", css: "ui-monospace, Menlo, Consolas, monospace" },
+  hand: { label: "Handwritten", css: "'Comic Sans MS', 'Bradley Hand', cursive" },
+} as const;
+
 export const textStyle = (d: Look): CSSProperties => ({
+  fontFamily: d.font ? FONTS[d.font]?.css : undefined,
+  textDecoration: d.strike ? "line-through" : undefined,
   fontSize: d.fontSize,
   fontWeight: d.bold ? 700 : undefined,
   fontStyle: d.italic ? "italic" : undefined,

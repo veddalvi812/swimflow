@@ -53,6 +53,7 @@ import { useFreeStore, isFreeId, setAuthor } from "@/store/free-store";
 import { undo, redo } from "@/store/history";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+const TEXT_NODES = ["sticky", "text", "shape", "frame"];
 const edgeTypes = { routed: RoutedEdge };
 
 const ProcessBox = withToolbar(ProcessNode);
@@ -215,7 +216,9 @@ function EditorCanvas({
 
   const handleNodeDoubleClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => {
-      if (!node.id.startsWith("lane-") && !isFreeId(node.id)) {
+      if (isFreeId(node.id)) {
+        if (TEXT_NODES.includes(useFreeStore.getState().nodes.find((n) => n.id === node.id)?.type ?? "")) useFreeStore.getState().setEditing(node.id);
+      } else if (!node.id.startsWith("lane-")) {
         setEditingNode(node.id);
       }
     },
@@ -325,6 +328,18 @@ function EditorCanvas({
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
+      if (e.key === "Enter" || e.key === "F2") {
+        const free = useFreeStore.getState();
+        const one = free.nodes.filter((n) => n.selected);
+        const step = useDiagramStore.getState().selectedNodeId;
+        if (one.length === 1 && TEXT_NODES.includes(one[0].type ?? "") && !one[0].data?.locked) {
+          e.preventDefault();
+          free.setEditing(one[0].id);
+        } else if (!one.length && step) {
+          e.preventDefault();
+          setEditingNode(step);
+        }
+      }
       if (e.key === "Escape") {
         useView.getState().set({ present: false });
         useFreeStore.getState().setTool(null);
@@ -380,7 +395,7 @@ function EditorCanvas({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [deleteNode, deleteEdge, readOnly, fitView]);
+  }, [deleteNode, deleteEdge, readOnly, fitView, setEditingNode]);
 
   return (
     <div onDoubleClick={handleDoubleClick}

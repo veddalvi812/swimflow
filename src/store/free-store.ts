@@ -91,6 +91,8 @@ export const setAuthor = (name: string) => {
   author = name;
 };
 
+const TEXT_TYPES = ["sticky", "text", "shape", "frame"];
+
 export const isFreeId = (id: string) => id.startsWith("f-");
 
 let seq = 0;
@@ -126,6 +128,8 @@ interface FreeStore {
   tool: Tool | null;
   clipboard: Node[];
   setTool: (t: Tool | null) => void;
+  editing: string | null; // the object whose text is being typed into
+  setEditing: (id: string | null) => void;
   place: (pos: { x: number; y: number }) => void;
   addFlowchart: (spec: FlowSpec, pos: { x: number; y: number }) => void;
   addBlock: (
@@ -196,6 +200,8 @@ export const useFreeStore = create<FreeStore>((set, get) => {
   clipboard: [],
 
   setTool: (tool) => set({ tool }),
+  editing: null,
+  setEditing: (editing) => set({ editing }),
 
   place: (pos) => {
     const { tool, nodes } = get();
@@ -212,7 +218,7 @@ export const useFreeStore = create<FreeStore>((set, get) => {
       width: d.w,
       height: d.h,
     });
-    set({ nodes: [...nodes.map((n) => ({ ...n, selected: false })), { ...node, selected: true }], tool: null });
+    set({ nodes: [...nodes.map((n) => ({ ...n, selected: false })), { ...node, selected: true }], tool: null, editing: TEXT_TYPES.includes(d.type) ? node.id : null });
   },
 
   // Drops an object centered on `pos`. `fixed` also pins its size; otherwise it sizes to its content.

@@ -116,12 +116,7 @@ export function FreeProperties({ id }: { id: string }) {
 
       {hasText && (
         <>
-          <textarea
-            value={String(d.text ?? "")}
-            onChange={(e) => set({ text: e.target.value })}
-            rows={3}
-            className="w-full resize-none rounded-md border border-[var(--border)] bg-[var(--background)] px-2.5 py-2 text-sm outline-none focus:border-[var(--border-focus)]"
-          />
+          <p className="text-xs text-[var(--muted-foreground)]">Double-click the object, or press Enter, to type in it.</p>
           <Row label="Text">
             <div className="flex items-center gap-1">
               <select

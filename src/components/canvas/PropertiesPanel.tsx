@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { X, Trash2, Plus, GripVertical } from "lucide-react";
 import type { NodeType } from "@/types/diagram";
 
-const NODE_TYPE_LABELS: Record<NodeType, string> = {
+export const NODE_TYPE_LABELS: Record<NodeType, string> = {
   start: "Start",
   end: "End",
   process: "Process",
@@ -76,12 +76,7 @@ function NodeProperties() {
       <Separator />
 
       <div className="flex flex-col gap-3">
-        <Field label="Label">
-          <TextInput
-            value={node.label}
-            onChange={(label) => updateNode(node.id, { label })}
-          />
-        </Field>
+        <p className="text-xs text-[var(--muted-foreground)]">Double-click the step, or press Enter, to edit its text.</p>
 
         <Field label="Type">
           <select

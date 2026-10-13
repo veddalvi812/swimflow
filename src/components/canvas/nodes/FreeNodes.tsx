@@ -9,9 +9,10 @@ import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { useFreeStore, uid, type KanbanCol, type TimelineItem } from "@/store/free-store";
 
 function InlineEdit({
-  value, onCommit, className = "", single = false,
-}: { value: string; onCommit: (v: string) => void; className?: string; single?: boolean }) {
-  const [editing, setEditing] = useState(false);
+  value, onCommit, className = "", single = false, force = false, onClose,
+}: { value: string; onCommit: (v: string) => void; className?: string; single?: boolean; force?: boolean; onClose?: () => void }) {
+  const [local, setEditing] = useState(false);
+  const editing = local || force;
 
   if (editing) {
     return (
@@ -23,6 +24,7 @@ function InlineEdit({
         onBlur={(e) => {
           onCommit(e.target.value);
           setEditing(false);
+          onClose?.();
         }}
         onKeyDown={(e) => {
           if (e.key === "Escape" || (single && e.key === "Enter")) {
@@ -30,7 +32,7 @@ function InlineEdit({
             e.currentTarget.blur();
           }
         }}
-        className={`nodrag nowheel w-full resize-none bg-transparent outline-none ${single ? "" : "h-full"} ${className}`}
+        className={`nodrag nowheel w-full resize-none bg-transparent outline-none [field-sizing:content] ${single ? "" : "h-full"} ${className}`}
       />
     );
   }
@@ -43,7 +45,34 @@ function InlineEdit({
 
 function EditableText({ id, text, className = "" }: { id: string; text: string; className?: string }) {
   const update = useFreeStore((s) => s.update);
-  return <InlineEdit value={text} onCommit={(v) => update(id, { text: v })} className={className} />;
+  const force = useFreeStore((s) => s.editing === id);
+  return (
+    <InlineEdit
+      value={text}
+      onCommit={(v) => update(id, { text: v })}
+      className={className}
+      force={force}
+      onClose={() => useFreeStore.getState().setEditing(null)}
+    />
+  );
+}
+
+// A small open-link button for objects that carry a link.
+function LinkBadge({ href }: { href?: string }) {
+  const url = href ? safeUrl(href) : null;
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={url}
+      aria-label="Open link"
+      className="nodrag absolute -right-2 -top-2 z-10 flex size-5 items-center justify-center rounded-full bg-white text-[#3b82f6] shadow ring-1 ring-[#e4e4e7]"
+    >
+      <ExternalLink className="size-3" />
+    </a>
+  );
 }
 
 const ring = (selected?: boolean) => (selected ? "outline outline-2 outline-offset-2 outline-[#3b82f6]" : "");
@@ -59,6 +88,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
         <EditableText id={id} text={d.text} className="h-full" />
       </div>
       {d.author && <p className="mt-1 truncate text-[11px] text-black/50">{d.author}</p>}
+      <LinkBadge href={d.href} />
       <AllHandles />
     </div>
   );
@@ -69,6 +99,7 @@ export function TextNode({ id, data, selected }: NodeProps) {
   return (
     <div className={`min-w-[80px] px-1 py-0.5 text-[18px] text-[#1a1a1a] ${ring(selected)}`} style={textStyle(d)}>
       <EditableText id={id} text={d.text} />
+      <LinkBadge href={d.href} />
       <AllHandles />
     </div>
   );
@@ -129,6 +160,7 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
           <EditableText id={id} text={d.text} className="text-center" />
         </div>
       </div>
+      <LinkBadge href={d.href} />
       <AllHandles />
     </div>
   );
