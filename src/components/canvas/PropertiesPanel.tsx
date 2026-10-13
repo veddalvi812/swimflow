@@ -302,6 +302,7 @@ function DiagramProperties() {
   const diagram = useDiagramStore((s) => s.diagram);
   const updateTitle = useDiagramStore((s) => s.updateTitle);
   const setOrientation = useDiagramStore((s) => s.setOrientation);
+  const setSpacing = useDiagramStore((s) => s.setSpacing);
   const updateLane = useDiagramStore((s) => s.updateLane);
   const addLane = useDiagramStore((s) => s.addLane);
   const deleteLane = useDiagramStore((s) => s.deleteLane);
@@ -335,6 +336,24 @@ function DiagramProperties() {
                 }`}
               >
                 {o === "horizontal" ? "Horizontal lanes" : "Vertical lanes"}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <Field label="Spacing between steps">
+          <div className="flex gap-1 rounded-md bg-[var(--surface)] p-0.5">
+            {([["compact", "Compact"], ["normal", "Normal"], ["roomy", "Spacious"]] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setSpacing(id)}
+                className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                  (diagram.spacing ?? "normal") === id
+                    ? "bg-[var(--surface-raised)] shadow-sm"
+                    : "text-[var(--muted-foreground)]"
+                }`}
+              >
+                {label}
               </button>
             ))}
           </div>

@@ -12,9 +12,12 @@ export type EdgeType = "default" | "conditional" | "exception";
 
 export type Orientation = "horizontal" | "vertical";
 
+export type Spacing = "compact" | "normal" | "roomy";
+
 export interface SwimlaneDiagram {
   title: string;
   orientation: Orientation;
+  spacing?: Spacing; // how far apart steps are laid out; default normal
   lanes: Lane[];
   nodes: DiagramNode[];
   edges: DiagramEdge[];

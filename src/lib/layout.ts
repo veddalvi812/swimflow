@@ -36,8 +36,10 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
   lanes: LaneBounds[];
 } {
   const vertical = diagram.orientation === "vertical";
+  // Spacing stretches the gaps between steps (and between stacked rows) without changing the steps.
+  const k = { compact: 0.7, normal: 1, roomy: 1.7 }[diagram.spacing ?? "normal"];
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: vertical ? "TB" : "LR", nodesep: 50, ranksep: 80, marginx: 20, marginy: 20 });
+  g.setGraph({ rankdir: vertical ? "TB" : "LR", nodesep: 50 * k, ranksep: 80 * k, marginx: 20, marginy: 20 });
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const node of diagram.nodes) {
@@ -78,7 +80,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
 
   // Steps in the same lane that would land on top of each other (same stage of the flow) are split into
   // extra rows across the lane, so nothing overlaps. Steps placed by hand are left where the user put them.
-  const ROW_GAP = 28;
+  const ROW_GAP = Math.round(28 * k);
   const packing = new Map<string, { rows: number; rowSize: number }>();
   const rowOf = new Map<string, number>();
   for (const laneId of laneOrder) {
@@ -108,7 +110,8 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     const laneDef = diagram.lanes.find((l) => l.id === laneId)!;
     const { rows, rowSize } = packing.get(laneId)!;
     const content = rows * rowSize + (rows - 1) * ROW_GAP;
-    const size = laneDef.size ?? Math.max(vertical ? LANE_MIN_WIDTH : LANE_MIN_HEIGHT, content + LANE_PADDING * 2);
+    const size =
+      laneDef.size ?? Math.round(Math.max((vertical ? LANE_MIN_WIDTH : LANE_MIN_HEIGHT) * k, content + LANE_PADDING * 2 * k));
     const length = flowEnd + (vertical ? LANE_HEADER_HEIGHT : LANE_HEADER_WIDTH) + LANE_PADDING * 2;
 
     laneBounds.push({
@@ -214,7 +217,7 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
       targetHandle: into === 0 ? mainIn : sideFrom,
       label: edge.label,
       type: "smoothstep",
-      pathOptions: { offset: 24 + 14 * out, borderRadius: 8 },
+      pathOptions: { offset: Math.round((24 + 14 * out) * k), borderRadius: 8 },
       animated: edge.type === "conditional",
       style: {
         stroke: edge.type === "exception" ? "#dc2626" : "var(--muted-foreground)",
