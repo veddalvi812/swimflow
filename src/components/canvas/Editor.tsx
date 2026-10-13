@@ -37,6 +37,7 @@ import { ToolRail } from "./ToolRail";
 import { DrawLayer } from "./DrawLayer";
 import { SearchBox } from "./SearchBox";
 import { AccountMenu } from "./AccountMenu";
+import { RoutedEdge } from "./edges/RoutedEdge";
 import { Cursors } from "./Cursors";
 import { usePresence } from "@/store/presence";
 import { useView, restoreView } from "@/store/view-store";
@@ -51,6 +52,8 @@ import { StickyNode, TextNode, ShapeNode, FrameNode, KanbanNode, TimelineNode, T
 import { useFreeStore, isFreeId, setAuthor } from "@/store/free-store";
 import { undo, redo } from "@/store/history";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
+const edgeTypes = { routed: RoutedEdge };
 
 const ProcessBox = withToolbar(ProcessNode);
 
@@ -412,6 +415,7 @@ function EditorCanvas({
         onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         minZoom={0.1}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}

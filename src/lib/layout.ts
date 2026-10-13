@@ -1,6 +1,7 @@
 import dagre from "@dagrejs/dagre";
 import type { SwimlaneDiagram } from "@/types/diagram";
 import type { Node, Edge } from "@xyflow/react";
+import { DIRS, markUsed, newUsed, route, simplify, type Dir, type Pt, type Rect } from "./routing";
 import {
   LANE_HEADER_WIDTH,
   LANE_HEADER_HEIGHT,
@@ -184,8 +185,8 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
   const rfNodes = [...laneNodes, ...contentNodes];
 
   // Nodes can have any number of paths in and out. The first path leaves and enters along the flow; extra
-  // ones use the sides of the step facing their lane (or alternate sides in the same lane) and run at their own
-  // distance, so lines and labels don't pile up on each other.
+  // ones use the sides of the step facing their lane (or alternate sides in the same lane). Each connector is
+  // then routed around the steps, avoiding lines that earlier connectors already use.
   const laneIndex = new Map(laneOrder.map((id, i) => [id, i]));
   const byId = new Map(diagram.nodes.map((n) => [n.id, n]));
   const outCount = new Map<string, number>();
@@ -194,6 +195,22 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
   const mainIn = vertical ? "t" : "l";
   const before = vertical ? "l" : "t";
   const after = vertical ? "r" : "b";
+
+  const GAP = 14; // how far a connector leaves a step before it may turn
+  const rects = new Map<string, Rect>();
+  for (const n of contentNodes) {
+    rects.set(n.id, { x: n.position.x, y: n.position.y, w: Number(n.style?.width ?? 0), h: Number(n.style?.height ?? 0) });
+  }
+  const obstacles = [...rects.values()];
+  const used = newUsed();
+  const anchor = (id: string, side: string) => {
+    const r = rects.get(id);
+    if (!r) return null;
+    const dir: Dir = side === "r" ? 0 : side === "b" ? 1 : side === "l" ? 2 : 3;
+    const p: Pt = dir === 0 ? [r.x + r.w, r.y + r.h / 2] : dir === 1 ? [r.x + r.w / 2, r.y + r.h] : dir === 2 ? [r.x, r.y + r.h / 2] : [r.x + r.w / 2, r.y];
+    const stub: Pt = [p[0] + DIRS[dir][0] * GAP, p[1] + DIRS[dir][1] * GAP];
+    return { p, dir, stub };
+  };
 
   const rfEdges: Edge[] = diagram.edges.map((edge) => {
     const from = byId.get(edge.from);
@@ -208,16 +225,30 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     // Which side of the step faces the other lane (odd/even alternation when they share a lane)
     const sideTo = toLane > fromLane ? after : toLane < fromLane ? before : out % 2 === 1 ? before : after;
     const sideFrom = fromLane < toLane ? before : fromLane > toLane ? after : into % 2 === 1 ? before : after;
+    const sourceHandle = out === 0 ? mainOut : sideTo;
+    const targetHandle = into === 0 ? mainIn : sideFrom;
+
+    let points: Pt[] | undefined;
+    const a = anchor(edge.from, sourceHandle);
+    const b = anchor(edge.to, targetHandle);
+    if (a && b && edge.from !== edge.to) {
+      const via: Pt | undefined = edge.via ? [edge.via.x, edge.via.y] : undefined;
+      const legs = via
+        ? [...route(a.stub, a.dir, via, obstacles, used), ...route(via, null, b.stub, obstacles, used).slice(1)]
+        : route(a.stub, a.dir, b.stub, obstacles, used);
+      points = simplify([a.p, ...legs, b.p]);
+      markUsed(used, points);
+    }
 
     return {
       id: edge.id,
       source: edge.from,
       target: edge.to,
-      sourceHandle: out === 0 ? mainOut : sideTo,
-      targetHandle: into === 0 ? mainIn : sideFrom,
+      sourceHandle,
+      targetHandle,
       label: edge.label,
-      type: "smoothstep",
-      pathOptions: { offset: Math.round((24 + 14 * out) * k), borderRadius: 8 },
+      type: points ? "routed" : "smoothstep",
+      data: { points, via: edge.via },
       animated: edge.type === "conditional",
       style: {
         stroke: edge.type === "exception" ? "#dc2626" : "var(--muted-foreground)",

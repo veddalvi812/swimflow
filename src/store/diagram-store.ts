@@ -53,6 +53,7 @@ interface DiagramStore {
   updateTitle: (title: string) => void;
   setOrientation: (o: Orientation) => void;
   setSpacing: (s: Spacing) => void;
+  setEdgeVia: (id: string, via?: { x: number; y: number }) => void;
   exportJSON: () => string;
   importJSON: (json: string) => boolean;
 }
@@ -281,6 +282,16 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
       edges: diagram.edges.filter((e) => e.id !== id),
     };
     set(commit(get, updated, { selectedEdgeId: null }));
+  },
+
+  setEdgeVia: (id, via) => {
+    const { diagram } = get();
+    const edges = diagram.edges.map((e) => {
+      if (e.id !== id) return e;
+      const { via: _old, ...rest } = e;
+      return via ? { ...rest, via } : rest;
+    });
+    set(commit(get, { ...diagram, edges }));
   },
 
   setSpacing: (spacing) => {

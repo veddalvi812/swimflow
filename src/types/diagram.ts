@@ -51,4 +51,5 @@ export interface DiagramEdge {
   to: string;
   label?: string;
   type: EdgeType;
+  via?: { x: number; y: number }; // a point the connector is steered through; otherwise it's routed automatically
 }

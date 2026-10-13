@@ -147,6 +147,7 @@ function EdgeProperties() {
   const selectEdge = useDiagramStore((s) => s.selectEdge);
 
   const edge = diagram.edges.find((e) => e.id === selectedEdgeId);
+  const setEdgeVia = useDiagramStore((s) => s.setEdgeVia);
   if (!edge) return null;
 
   const fromNode = diagram.nodes.find((n) => n.id === edge.from);
@@ -199,6 +200,15 @@ function EdgeProperties() {
       </div>
 
       <Separator />
+
+      <p className="text-xs text-[var(--muted-foreground)]">
+        Connectors steer around steps on their own. Drag the dot on a selected line to route it through a point of your choice.
+      </p>
+      {edge.via && (
+        <Button variant="secondary" size="sm" className="w-full" onClick={() => setEdgeVia(edge.id, undefined)}>
+          Reset to automatic route
+        </Button>
+      )}
 
       <Button
         variant="destructive"
