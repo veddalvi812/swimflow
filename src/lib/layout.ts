@@ -76,27 +76,38 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
     manualEnd = Math.max(manualEnd, (vertical ? node.pos.y + h : node.pos.x + w) + LANE_PADDING);
   }
 
-  // Each lane's size across the flow, from the spread of its nodes
+  // Steps in the same lane that would land on top of each other (same stage of the flow) are split into
+  // extra rows across the lane, so nothing overlaps. Steps placed by hand are left where the user put them.
+  const ROW_GAP = 28;
+  const packing = new Map<string, { rows: number; rowSize: number }>();
+  const rowOf = new Map<string, number>();
+  for (const laneId of laneOrder) {
+    const auto = (nodesByLane.get(laneId) || []).filter((n) => !n.pos && g.node(n.id));
+    const along = (n: (typeof auto)[number]) => {
+      const pos = g.node(n.id);
+      const { w, h } = nodeSize(n.type);
+      return vertical ? { start: pos.y - h / 2, end: pos.y + h / 2 } : { start: pos.x - w / 2, end: pos.x + w / 2 };
+    };
+    const rowEnds: number[] = [];
+    for (const n of [...auto].sort((x, y) => along(x).start - along(y).start)) {
+      const { start, end } = along(n);
+      let row = rowEnds.findIndex((e) => e + ROW_GAP <= start);
+      if (row === -1) row = rowEnds.push(end) - 1;
+      else rowEnds[row] = end;
+      rowOf.set(n.id, row);
+    }
+    const rowSize = Math.max(0, ...auto.map((n) => (vertical ? nodeSize(n.type).w : nodeSize(n.type).h)));
+    packing.set(laneId, { rows: Math.max(1, rowEnds.length), rowSize });
+  }
+
+  // Each lane is as tall (or wide) as its rows need
   const laneBounds: LaneBounds[] = [];
   let cursor = 0;
 
   for (const laneId of laneOrder) {
     const laneDef = diagram.lanes.find((l) => l.id === laneId)!;
-    const laneNodes = nodesByLane.get(laneId) || [];
-
-    let min = Infinity;
-    let max = -Infinity;
-    for (const node of laneNodes) {
-      const pos = g.node(node.id);
-      const { w, h } = nodeSize(node.type);
-      if (!pos) continue;
-      min = Math.min(min, vertical ? pos.x - w / 2 : pos.y - h / 2);
-      max = Math.max(max, vertical ? pos.x + w / 2 : pos.y + h / 2);
-    }
-    // Horizontal lanes grow with the spread of their nodes; vertical lanes are as wide as their widest node,
-    // since nodes sit centered in the column.
-    const widest = Math.max(0, ...laneNodes.map((n) => nodeSize(n.type).w));
-    const content = vertical ? widest : min === Infinity ? 0 : max - min;
+    const { rows, rowSize } = packing.get(laneId)!;
+    const content = rows * rowSize + (rows - 1) * ROW_GAP;
     const size = laneDef.size ?? Math.max(vertical ? LANE_MIN_WIDTH : LANE_MIN_HEIGHT, content + LANE_PADDING * 2);
     const length = flowEnd + (vertical ? LANE_HEADER_HEIGHT : LANE_HEADER_WIDTH) + LANE_PADDING * 2;
 
@@ -153,9 +164,15 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
         ? vertical
           ? { x: lane.x + node.pos.x, y: node.pos.y }
           : { x: node.pos.x, y: lane.y + node.pos.y }
-        : vertical
-          ? { x: lane.x + lane.width / 2 - w / 2, y: (pos?.y ?? 0) - h / 2 + LANE_HEADER_HEIGHT }
-          : { x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH, y: lane.y + lane.height / 2 - h / 2 },
+        : (() => {
+            const { rows, rowSize } = packing.get(node.lane) ?? { rows: 1, rowSize: 0 };
+            const row = rowOf.get(node.id) ?? 0;
+            const block = rows * rowSize + (rows - 1) * ROW_GAP;
+            const across = (vertical ? lane.width : lane.height) / 2 - block / 2 + row * (rowSize + ROW_GAP);
+            return vertical
+              ? { x: lane.x + across + (rowSize - w) / 2, y: (pos?.y ?? 0) - h / 2 + LANE_HEADER_HEIGHT }
+              : { x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH, y: lane.y + across + (rowSize - h) / 2 };
+          })(),
       data: { label: node.label, nodeType: node.type, description: node.description },
       style: { width: w, height: h },
     };
@@ -163,43 +180,52 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
 
   const rfNodes = [...laneNodes, ...contentNodes];
 
-  // Nodes can have any number of paths in and out. Edges leave and enter along the flow;
-  // a decision's extra branches fan out sideways toward the lane they go to.
+  // Nodes can have any number of paths in and out. The first path leaves and enters along the flow; extra
+  // ones use the sides of the step facing their lane (or alternate sides in the same lane) and run at their own
+  // distance, so lines and labels don't pile up on each other.
   const laneIndex = new Map(laneOrder.map((id, i) => [id, i]));
   const byId = new Map(diagram.nodes.map((n) => [n.id, n]));
   const outCount = new Map<string, number>();
+  const inCount = new Map<string, number>();
+  const mainOut = vertical ? "b" : "r";
+  const mainIn = vertical ? "t" : "l";
+  const before = vertical ? "l" : "t";
+  const after = vertical ? "r" : "b";
 
   const rfEdges: Edge[] = diagram.edges.map((edge) => {
     const from = byId.get(edge.from);
     const to = byId.get(edge.to);
-    const n = outCount.get(edge.from) ?? 0;
-    outCount.set(edge.from, n + 1);
+    const out = outCount.get(edge.from) ?? 0;
+    const into = inCount.get(edge.to) ?? 0;
+    outCount.set(edge.from, out + 1);
+    inCount.set(edge.to, into + 1);
     const fromLane = laneIndex.get(from?.lane ?? "") ?? 0;
     const toLane = laneIndex.get(to?.lane ?? "") ?? 0;
 
-    let sourceHandle = vertical ? "b" : "r";
-    if (from?.type === "decision" && n > 0 && fromLane !== toLane) {
-      const later = toLane > fromLane;
-      sourceHandle = vertical ? (later ? "r" : "l") : later ? "b" : "t";
-    }
+    // Which side of the step faces the other lane (odd/even alternation when they share a lane)
+    const sideTo = toLane > fromLane ? after : toLane < fromLane ? before : out % 2 === 1 ? before : after;
+    const sideFrom = fromLane < toLane ? before : fromLane > toLane ? after : into % 2 === 1 ? before : after;
 
     return {
       id: edge.id,
       source: edge.from,
       target: edge.to,
-      sourceHandle,
-      targetHandle: vertical ? "t" : "l",
+      sourceHandle: out === 0 ? mainOut : sideTo,
+      targetHandle: into === 0 ? mainIn : sideFrom,
       label: edge.label,
       type: "smoothstep",
+      pathOptions: { offset: 24 + 14 * out, borderRadius: 8 },
       animated: edge.type === "conditional",
       style: {
         stroke: edge.type === "exception" ? "#dc2626" : "var(--muted-foreground)",
         strokeWidth: 1.5,
       },
       labelStyle: { fontSize: 12, fontWeight: 500, fill: "var(--foreground)" },
-      labelBgStyle: { fill: "var(--background)", fillOpacity: 0.8 },
+      labelBgStyle: { fill: "var(--background)", fillOpacity: 0.9 },
+      labelBgPadding: [6, 3] as [number, number],
+      labelBgBorderRadius: 4,
       markerEnd: { type: "arrowclosed" as const, color: "var(--muted-foreground)" },
-    };
+    } as Edge;
   });
 
   return { nodes: rfNodes, edges: rfEdges, lanes: laneBounds };

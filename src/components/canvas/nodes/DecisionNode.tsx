@@ -10,9 +10,8 @@ export function DecisionNode({ id, data, selected }: NodeProps) {
       <svg viewBox="0 0 80 80" className="absolute inset-0" width={80} height={80}>
         <polygon
           points="40,4 76,40 40,76 4,40"
-          className={`fill-[var(--surface-raised)] transition-colors ${
-            selected ? "stroke-[var(--primary)]" : "stroke-[var(--border)]"
-          }`}
+          fill="#ffffff"
+          stroke={selected ? "#3b82f6" : "#a1a1aa"}
           strokeWidth={selected ? 2 : 1.5}
         />
       </svg>
