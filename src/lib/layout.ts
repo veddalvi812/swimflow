@@ -150,7 +150,9 @@ export function layoutDiagram(diagram: SwimlaneDiagram): {
       id: node.id,
       type: node.type === "start" || node.type === "end" ? "startEnd" : node.type,
       position: node.pos
-        ? node.pos
+        ? vertical
+          ? { x: lane.x + node.pos.x, y: node.pos.y }
+          : { x: node.pos.x, y: lane.y + node.pos.y }
         : vertical
           ? { x: lane.x + lane.width / 2 - w / 2, y: (pos?.y ?? 0) - h / 2 + LANE_HEADER_HEIGHT }
           : { x: (pos?.x ?? 0) - w / 2 + LANE_HEADER_WIDTH, y: lane.y + lane.height / 2 - h / 2 },

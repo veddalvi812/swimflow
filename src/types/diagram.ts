@@ -39,7 +39,7 @@ export interface DiagramNode {
   label: string;
   lane: string;
   description?: string;
-  pos?: { x: number; y: number }; // set by dragging; otherwise auto-laid out
+  pos?: { x: number; y: number }; // set by dragging: along the flow it's absolute, across it's the offset inside the lane; otherwise auto-laid out
 }
 
 export interface DiagramEdge {

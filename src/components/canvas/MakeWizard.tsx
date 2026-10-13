@@ -45,10 +45,11 @@ export function MakeWizard({ compact = false, onDone, onBlank }: { compact?: boo
     else setGen(null);
   };
 
-  const copy = async () => {
+  const copy = () => {
     if (!gen) return;
-    // Clipboard can be blocked; the step still moves on and the user can use "Copy the prompt again".
-    await navigator.clipboard.writeText(gen.prompt(description, orientation)).catch(() => {});
+    // Don't wait on the clipboard: it can be blocked or stall, and the step should still move on.
+    // "Copy the prompt again" is there if it didn't work.
+    navigator.clipboard?.writeText(gen.prompt(description, orientation)).catch(() => {});
     setCopied(true);
     setStep("paste");
   };

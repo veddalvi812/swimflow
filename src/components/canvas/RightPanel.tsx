@@ -180,7 +180,7 @@ export function RightPanel() {
       <div className="pointer-events-auto flex gap-1 rounded-lg bg-[var(--surface)] p-1">
         {tabBtn("props", "Properties")}
         {tabBtn("json", "JSON")}
-        {tabBtn("ai", "Make with AI")}
+        {tabBtn("ai", "AI")}
         {boardId && tabBtn("comments", open ? `Comments ${open}` : "Comments")}
       </div>
       {tab === "comments" && boardId ? <CommentsPanel /> : tab === "json" ? <JsonPanel /> : tab === "ai" ? (

@@ -164,7 +164,10 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
     const { diagram } = get();
     const id = `n-${Date.now()}`;
     const { w, h } = nodeSize(type);
-    const node: DiagramNode = { id, type, label: "New Step", lane, ...(at ? { pos: { x: at.x - w / 2, y: at.y - h / 2 } } : {}) };
+    const home = get().lanes.find((l) => l.id === lane);
+    const abs = at && { x: at.x - w / 2, y: at.y - h / 2 };
+    const pos = abs && home && (diagram.orientation === "vertical" ? { x: abs.x - home.x, y: abs.y } : { x: abs.x, y: abs.y - home.y });
+    const node: DiagramNode = { id, type, label: "New Step", lane, ...(pos ? { pos } : {}) };
     const updated = { ...diagram, nodes: [...diagram.nodes, node] };
     set(commit(get, updated, { selectedNodeId: id, editingNodeId: id }));
   },
@@ -188,8 +191,10 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
     const pos = vertical
       ? { x: clamp(position.x, lane.x, lane.x + lane.width - w), y: Math.max(position.y, LANE_HEADER_HEIGHT) }
       : { x: Math.max(position.x, LANE_HEADER_WIDTH), y: clamp(position.y, lane.y, lane.y + lane.height - h) };
-    if (step.lane === lane.id && step.pos && step.pos.x === pos.x && step.pos.y === pos.y) return;
-    set(commit(get, { ...diagram, nodes: diagram.nodes.map((n) => (n.id === id ? { ...n, lane: lane.id, pos } : n)) }));
+    // Remembered relative to the lane across the flow, so the step goes with its lane when lanes are reordered.
+    const rel = vertical ? { x: pos.x - lane.x, y: pos.y } : { x: pos.x, y: pos.y - lane.y };
+    if (step.lane === lane.id && step.pos && step.pos.x === rel.x && step.pos.y === rel.y) return;
+    set(commit(get, { ...diagram, nodes: diagram.nodes.map((n) => (n.id === id ? { ...n, lane: lane.id, pos: rel } : n)) }));
   },
 
   insertLane: (index) => {
