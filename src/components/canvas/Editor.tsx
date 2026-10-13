@@ -38,6 +38,7 @@ import { DrawLayer } from "./DrawLayer";
 import { SearchBox } from "./SearchBox";
 import { AccountMenu } from "./AccountMenu";
 import { RoutedEdge } from "./edges/RoutedEdge";
+import { FreeEdge } from "./edges/FreeEdge";
 import { Cursors } from "./Cursors";
 import { usePresence } from "@/store/presence";
 import { useView, restoreView } from "@/store/view-store";
@@ -54,7 +55,7 @@ import { undo, redo } from "@/store/history";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const TEXT_NODES = ["sticky", "text", "shape", "frame"];
-const edgeTypes = { routed: RoutedEdge };
+const edgeTypes = { routed: RoutedEdge, free: FreeEdge };
 
 const ProcessBox = withToolbar(ProcessNode);
 
@@ -157,7 +158,8 @@ function EditorCanvas({
         const head = { type: MarkerType.ArrowClosed, color };
         return {
           ...e,
-          type: e.type ?? "smoothstep",
+          type: "free",
+          data: { ...d, kind: e.type ?? "smoothstep" },
           markerEnd: d.arrow === "none" ? undefined : head,
           markerStart: d.arrow === "both" ? head : undefined,
           style: { stroke: color, strokeWidth: 2, strokeDasharray: d.dashed ? "6 4" : undefined },
